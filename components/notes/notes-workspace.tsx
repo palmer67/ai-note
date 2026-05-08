@@ -74,11 +74,9 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [importPending, startImport] = useTransition();
 
   const selectedNote = selectedId ? notes.find((note) => note.id === selectedId) ?? null : null;
-  const availableTags = Array.from(
-    new Set(
-      notes.flatMap((note) => parseTags(note.marker))
-    )
-  ).sort((left, right) => left.localeCompare(right, "zh-CN"));
+  const availableTags = Array.from(new Set(notes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
+    left.localeCompare(right, "zh-CN")
+  );
 
   const filteredNotes = notes.filter((note) => {
     const matchesKeywordSearch = matchesSearch(note, deferredSearch);

@@ -44,7 +44,6 @@ export function NoteEditor({
     }
 
     onTagsChange(Array.from(new Set([...draft.tags, ...nextTags])));
-
     setTagInput("");
   }
 
@@ -57,9 +56,7 @@ export function NoteEditor({
       <div className="panel-header">
         <div>
           <h2 className="panel-title">{hasSavedNote ? "编辑笔记" : "新建笔记"}</h2>
-          <p className="panel-subtitle">
-            先把文章内容保存下来。只要你改了正文，就可以重新生成一版 AI 分析。
-          </p>
+          <p className="panel-subtitle">先把文章内容保存下来。改了正文后，你可以随时重新生成一版 AI 分析。</p>
         </div>
       </div>
 
@@ -116,7 +113,7 @@ export function NoteEditor({
           }}
           placeholder="输入标签后按回车、英文逗号或中文逗号"
         />
-        <p className="help-text">标签会自动去空格、去重，并统一成一种格式。</p>
+        <p className="help-text">支持一次性粘贴多个标签，例如：AI, 写作, 方法论。</p>
       </div>
 
       <div className="field">

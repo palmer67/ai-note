@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+
+import { parseTags } from "@/lib/tags";
 import type { NoteDraft } from "@/lib/types";
 
 interface NoteEditorProps {
@@ -7,7 +12,8 @@ interface NoteEditorProps {
   isDeleting: boolean;
   isImporting: boolean;
   feedback: string | null;
-  onChange: (field: keyof NoteDraft, value: string) => void;
+  onChange: (field: "title" | "source_url" | "content", value: string) => void;
+  onTagsChange: (tags: string[]) => void;
   onSave: () => void;
   onDelete: () => void;
   onImportFromUrl: () => void;
@@ -21,11 +27,30 @@ export function NoteEditor({
   isImporting,
   feedback,
   onChange,
+  onTagsChange,
   onSave,
   onDelete,
   onImportFromUrl
 }: NoteEditorProps) {
+  const [tagInput, setTagInput] = useState("");
   const isError = feedback ? /failed|required|invalid|失败|错误|无效/i.test(feedback) : false;
+
+  function commitTag(rawTag: string) {
+    const nextTags = parseTags(rawTag);
+
+    if (!nextTags.length) {
+      setTagInput("");
+      return;
+    }
+
+    onTagsChange(Array.from(new Set([...draft.tags, ...nextTags])));
+
+    setTagInput("");
+  }
+
+  function removeTag(tagToRemove: string) {
+    onTagsChange(draft.tags.filter((tag) => tag !== tagToRemove));
+  }
 
   return (
     <section className="panel editor-card">
@@ -65,13 +90,33 @@ export function NoteEditor({
       </div>
 
       <div className="field">
-        <label htmlFor="note-marker">标记</label>
+        <label htmlFor="note-tag-input">标签</label>
+        <div className="tag-chip-row">
+          {draft.tags.length ? (
+            draft.tags.map((tag) => (
+              <button key={tag} type="button" className="tag-chip removable" onClick={() => removeTag(tag)}>
+                <span>{tag}</span>
+                <span aria-hidden="true">×</span>
+              </button>
+            ))
+          ) : (
+            <span className="muted">还没有标签，输入后按回车或逗号添加。</span>
+          )}
+        </div>
         <input
-          id="note-marker"
-          value={draft.marker}
-          onChange={(event) => onChange("marker", event.target.value)}
-          placeholder="比如：值得重读、产品、AI、方法论"
+          id="note-tag-input"
+          value={tagInput}
+          onChange={(event) => setTagInput(event.target.value)}
+          onBlur={() => commitTag(tagInput)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === "," || event.key === "，") {
+              event.preventDefault();
+              commitTag(tagInput);
+            }
+          }}
+          placeholder="输入标签后按回车、英文逗号或中文逗号"
         />
+        <p className="help-text">标签会自动去空格、去重，并统一成一种格式。</p>
       </div>
 
       <div className="field">

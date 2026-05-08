@@ -7,6 +7,7 @@ import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { NotesList } from "@/components/notes/notes-list";
 import { createClient } from "@/lib/supabase/client";
+import { parseTags, serializeTags } from "@/lib/tags";
 import type { Note, NoteDraft, Profile } from "@/lib/types";
 
 interface NotesWorkspaceProps {
@@ -24,7 +25,7 @@ interface ImportedArticlePayload {
 const blankDraft: NoteDraft = {
   title: "",
   source_url: "",
-  marker: "",
+  tags: [],
   content: ""
 };
 
@@ -36,7 +37,7 @@ function toDraft(note: Note | null): NoteDraft {
   return {
     title: note.title,
     source_url: note.source_url ?? "",
-    marker: note.marker ?? "",
+    tags: parseTags(note.marker),
     content: note.content
   };
 }
@@ -52,7 +53,9 @@ function matchesSearch(note: Note, query: string) {
     return true;
   }
 
-  return [note.title, note.marker ?? "", note.content].some((value) => value.toLowerCase().includes(normalized));
+  const tags = parseTags(note.marker).join(" ");
+
+  return [note.title, tags, note.content].some((value) => value.toLowerCase().includes(normalized));
 }
 
 export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceProps) {
@@ -61,6 +64,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [selectedId, setSelectedId] = useState<string | null>(initialNotes[0]?.id ?? null);
   const [draft, setDraft] = useState<NoteDraft>(() => toDraft(initialNotes[0] ?? null));
   const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
@@ -70,7 +74,18 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [importPending, startImport] = useTransition();
 
   const selectedNote = selectedId ? notes.find((note) => note.id === selectedId) ?? null : null;
-  const filteredNotes = notes.filter((note) => matchesSearch(note, deferredSearch));
+  const availableTags = Array.from(
+    new Set(
+      notes.flatMap((note) => parseTags(note.marker))
+    )
+  ).sort((left, right) => left.localeCompare(right, "zh-CN"));
+
+  const filteredNotes = notes.filter((note) => {
+    const matchesKeywordSearch = matchesSearch(note, deferredSearch);
+    const matchesTagFilter = activeTag ? parseTags(note.marker).includes(activeTag) : true;
+
+    return matchesKeywordSearch && matchesTagFilter;
+  });
 
   function selectNote(note: Note) {
     setSelectedId(note.id);
@@ -86,10 +101,17 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     setAnalysisError(null);
   }
 
-  function updateDraft(field: keyof NoteDraft, value: string) {
+  function updateDraft(field: "title" | "source_url" | "content", value: string) {
     setDraft((current) => ({
       ...current,
       [field]: value
+    }));
+  }
+
+  function updateTags(tags: string[]) {
+    setDraft((current) => ({
+      ...current,
+      tags
     }));
   }
 
@@ -103,13 +125,15 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         return;
       }
 
+      const marker = serializeTags(draft.tags) || null;
+
       if (selectedId) {
         const { data, error } = await supabase
           .from("notes")
           .update({
             title: draft.title.trim(),
             source_url: draft.source_url.trim() || null,
-            marker: draft.marker.trim() || null,
+            marker,
             content: draft.content.trim()
           })
           .eq("id", selectedId)
@@ -134,7 +158,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           user_id: currentProfile.id,
           title: draft.title.trim(),
           source_url: draft.source_url.trim() || null,
-          marker: draft.marker.trim() || null,
+          marker,
           content: draft.content.trim()
         })
         .select("*")
@@ -294,9 +318,12 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           notes={filteredNotes}
           search={search}
           selectedId={selectedId}
+          availableTags={availableTags}
+          activeTag={activeTag}
           onSearchChange={setSearch}
           onCreateNew={createNewNote}
           onSelect={selectNote}
+          onTagFilterChange={setActiveTag}
         />
 
         <NoteEditor
@@ -307,6 +334,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           isImporting={importPending}
           feedback={feedback}
           onChange={updateDraft}
+          onTagsChange={updateTags}
           onSave={handleSave}
           onDelete={handleDelete}
           onImportFromUrl={handleImportFromUrl}

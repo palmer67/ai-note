@@ -35,6 +35,6 @@ export interface Note {
 export interface NoteDraft {
   title: string;
   source_url: string;
-  marker: string;
+  tags: string[];
   content: string;
 }

@@ -5,10 +5,12 @@ interface NoteEditorProps {
   hasSavedNote: boolean;
   isSaving: boolean;
   isDeleting: boolean;
+  isImporting: boolean;
   feedback: string | null;
   onChange: (field: keyof NoteDraft, value: string) => void;
   onSave: () => void;
   onDelete: () => void;
+  onImportFromUrl: () => void;
 }
 
 export function NoteEditor({
@@ -16,10 +18,12 @@ export function NoteEditor({
   hasSavedNote,
   isSaving,
   isDeleting,
+  isImporting,
   feedback,
   onChange,
   onSave,
-  onDelete
+  onDelete,
+  onImportFromUrl
 }: NoteEditorProps) {
   const isError = feedback ? /failed|required|invalid|失败|错误|无效/i.test(feedback) : false;
 
@@ -46,12 +50,18 @@ export function NoteEditor({
 
       <div className="field">
         <label htmlFor="note-source">来源链接</label>
-        <input
-          id="note-source"
-          value={draft.source_url}
-          onChange={(event) => onChange("source_url", event.target.value)}
-          placeholder="https://example.com/article"
-        />
+        <div className="import-row">
+          <input
+            id="note-source"
+            value={draft.source_url}
+            onChange={(event) => onChange("source_url", event.target.value)}
+            placeholder="https://example.com/article"
+          />
+          <button type="button" className="ghost-button" disabled={isImporting} onClick={onImportFromUrl}>
+            {isImporting ? "导入中..." : "导入链接"}
+          </button>
+        </div>
+        <p className="help-text">自动抓取标题和正文，抓不全的部分你仍然可以手动补充。</p>
       </div>
 
       <div className="field">
@@ -70,7 +80,7 @@ export function NoteEditor({
           id="note-content"
           value={draft.content}
           onChange={(event) => onChange("content", event.target.value)}
-          placeholder="把文章正文粘贴到这里"
+          placeholder="把文章正文粘贴到这里，或者先通过链接自动导入"
         />
       </div>
 

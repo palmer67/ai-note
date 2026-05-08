@@ -1,3 +1,7 @@
+"use client";
+
+import { useState, useTransition } from "react";
+
 import type { Note } from "@/lib/types";
 
 interface AiAnalysisPanelProps {
@@ -22,8 +26,51 @@ function getAiStatusLabel(status: Note["ai_status"]) {
   }
 }
 
+function buildCopyText(note: NonNullable<AiAnalysisPanelProps["note"]>) {
+  const summary = note.ai_summary;
+
+  if (!summary) {
+    return "";
+  }
+
+  return [
+    `主题：${summary.topic}`,
+    "",
+    `核心观点：${summary.coreArgument}`,
+    "",
+    "关键论据：",
+    ...summary.supportingEvidence.map((item) => `- ${item}`),
+    "",
+    "适用场景：",
+    ...summary.bestFitScenarios.map((item) => `- ${item}`),
+    "",
+    "我的启发：",
+    ...summary.takeaways.map((item) => `- ${item}`)
+  ].join("\n");
+}
+
 export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnalysisPanelProps) {
   const summary = note?.ai_summary;
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [copyPending, startCopy] = useTransition();
+
+  function handleCopy() {
+    if (!note?.ai_summary) {
+      return;
+    }
+
+    setCopyFeedback(null);
+
+    startCopy(async () => {
+      try {
+        await navigator.clipboard.writeText(buildCopyText(note));
+        setCopyFeedback("分析结果已复制。");
+        window.setTimeout(() => setCopyFeedback(null), 1800);
+      } catch {
+        setCopyFeedback("复制失败，请手动复制。");
+      }
+    });
+  }
 
   return (
     <section className="panel">
@@ -34,9 +81,16 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
             模型调用放在后端完成，结果会自动回写到这条笔记里。
           </p>
         </div>
-        <button type="button" className="button secondary" disabled={!note || isAnalyzing} onClick={onAnalyze}>
-          {isAnalyzing ? "分析中..." : "开始分析"}
-        </button>
+        <div className="table-actions">
+          {summary ? (
+            <button type="button" className="ghost-button" disabled={copyPending} onClick={handleCopy}>
+              {copyPending ? "复制中..." : "复制分析"}
+            </button>
+          ) : null}
+          <button type="button" className="button secondary" disabled={!note || isAnalyzing} onClick={onAnalyze}>
+            {isAnalyzing ? "分析中..." : "开始分析"}
+          </button>
+        </div>
       </div>
 
       {!note ? (
@@ -96,6 +150,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
         </div>
       )}
 
+      {copyFeedback ? <p className={`feedback${copyFeedback.includes("失败") ? " error" : ""}`}>{copyFeedback}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
     </section>
   );

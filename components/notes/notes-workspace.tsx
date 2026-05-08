@@ -3,15 +3,22 @@
 import Link from "next/link";
 import { useDeferredValue, useState, useTransition } from "react";
 
-import { createClient } from "@/lib/supabase/client";
-import type { Note, NoteDraft, Profile } from "@/lib/types";
 import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { NotesList } from "@/components/notes/notes-list";
+import { createClient } from "@/lib/supabase/client";
+import type { Note, NoteDraft, Profile } from "@/lib/types";
 
 interface NotesWorkspaceProps {
   currentProfile: Profile;
   initialNotes: Note[];
+}
+
+interface ImportedArticlePayload {
+  title: string;
+  sourceUrl: string;
+  content: string;
+  extractionMode: "article" | "fallback";
 }
 
 const blankDraft: NoteDraft = {
@@ -35,9 +42,7 @@ function toDraft(note: Note | null): NoteDraft {
 }
 
 function sortNotes(notes: Note[]) {
-  return [...notes].sort((left, right) => {
-    return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-  });
+  return [...notes].sort((left, right) => new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime());
 }
 
 function matchesSearch(note: Note, query: string) {
@@ -62,6 +67,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [savePending, startSave] = useTransition();
   const [deletePending, startDelete] = useTransition();
   const [analysisPending, startAnalysis] = useTransition();
+  const [importPending, startImport] = useTransition();
 
   const selectedNote = selectedId ? notes.find((note) => note.id === selectedId) ?? null : null;
   const filteredNotes = notes.filter((note) => matchesSearch(note, deferredSearch));
@@ -104,9 +110,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             title: draft.title.trim(),
             source_url: draft.source_url.trim() || null,
             marker: draft.marker.trim() || null,
-            content: draft.content.trim(),
-            ai_summary: null,
-            ai_status: "idle"
+            content: draft.content.trim()
           })
           .eq("id", selectedId)
           .select("*")
@@ -120,7 +124,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         const savedNote = data as unknown as Note;
         setNotes((current) => sortNotes(current.map((note) => (note.id === savedNote.id ? savedNote : note))));
         setDraft(toDraft(savedNote));
-        setFeedback("笔记已保存。如果你修改了正文，可以重新执行 AI 分析。");
+        setFeedback("笔记已保存。现有 AI 分析会保留；如果你想基于新内容更新分析，可以手动重新运行。");
         return;
       }
 
@@ -178,6 +182,47 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       setSelectedId(nextSelected?.id ?? null);
       setDraft(toDraft(nextSelected));
       setFeedback("笔记已删除。");
+    });
+  }
+
+  function handleImportFromUrl() {
+    setFeedback(null);
+    setAnalysisError(null);
+
+    startImport(async () => {
+      if (!draft.source_url.trim()) {
+        setFeedback("请先填写来源链接，再尝试导入。");
+        return;
+      }
+
+      const response = await fetch("/api/articles/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sourceUrl: draft.source_url.trim()
+        })
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+        article?: ImportedArticlePayload;
+      };
+
+      if (!response.ok || !payload.article) {
+        setFeedback(payload.error ?? "链接导入失败。");
+        return;
+      }
+
+      setDraft((current) => ({
+        ...current,
+        title: payload.article?.title ?? current.title,
+        source_url: payload.article?.sourceUrl ?? current.source_url,
+        content: payload.article?.content ?? current.content
+      }));
+      setFeedback(payload.message ?? "已自动导入文章内容，你可以继续手动补充。");
     });
   }
 
@@ -259,10 +304,12 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           hasSavedNote={Boolean(selectedId)}
           isSaving={savePending}
           isDeleting={deletePending}
+          isImporting={importPending}
           feedback={feedback}
           onChange={updateDraft}
           onSave={handleSave}
           onDelete={handleDelete}
+          onImportFromUrl={handleImportFromUrl}
         />
 
         <AiAnalysisPanel

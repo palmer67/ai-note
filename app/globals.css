@@ -335,7 +335,8 @@ button {
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -354,10 +355,18 @@ button {
 
 .field input:focus,
 .field textarea:focus,
+.field select:focus,
 .search-input:focus {
   outline: none;
   border-color: rgba(161, 61, 45, 0.5);
   box-shadow: 0 0 0 4px rgba(161, 61, 45, 0.08);
+}
+
+.import-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
 }
 
 .small-link {

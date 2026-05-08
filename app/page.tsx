@@ -73,8 +73,7 @@ export default function HomePage() {
         <span className="section-kicker">为什么做这个项目</span>
         <h2 className="section-title">它很小，但骨架是真实 AI 产品那一套。</h2>
         <p className="section-lead">
-          它不是一个只看效果的假 Demo，而是把你以后做更大 AI 应用时会反复遇到的几层能力都串起来：
-          登录态页面、安全模型调用、行级权限控制，以及从简单功能自然长到检索和 Agent 的演进路径。
+          它不是一个只看效果的假 Demo，而是把你以后做更大 AI 应用时会反复遇到的几层能力都串起来：登录态页面、安全模型调用、行级权限控制，以及从简单功能自然长到检索和 Agent 的演进路径。
         </p>
         <div className="feature-grid">
           {pillars.map((pillar) => (

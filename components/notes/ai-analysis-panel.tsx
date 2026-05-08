@@ -77,9 +77,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
       <div className="panel-header">
         <div>
           <h2 className="panel-title">AI 深度拆解</h2>
-          <p className="panel-subtitle">
-            模型调用放在后端完成，结果会自动回写到这条笔记里。
-          </p>
+          <p className="panel-subtitle">模型调用放在后端完成，结果会自动回写到这条笔记里。</p>
         </div>
         <div className="table-actions">
           {summary ? (

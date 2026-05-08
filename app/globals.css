@@ -242,6 +242,7 @@ button {
 
 .feature-chip,
 .meta-chip,
+.tag-chip,
 .role-pill,
 .status-badge,
 .inline-badge {
@@ -254,6 +255,51 @@ button {
   color: var(--accent-strong);
   border: 1px solid rgba(161, 61, 45, 0.16);
   font-size: 0.83rem;
+}
+
+.tag-chip {
+  border: 1px solid rgba(161, 61, 45, 0.2);
+}
+
+.tag-chip.removable {
+  cursor: pointer;
+  background: rgba(255, 250, 242, 0.84);
+}
+
+.tag-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-chip-row.compact .tag-chip {
+  padding-inline: 10px;
+  font-size: 0.78rem;
+}
+
+.tag-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tag-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 242, 0.74);
+  color: var(--ink-soft);
+}
+
+.tag-filter-chip.active {
+  border-color: rgba(161, 61, 45, 0.24);
+  background: rgba(161, 61, 45, 0.12);
+  color: var(--accent-strong);
 }
 
 .role-pill.admin {

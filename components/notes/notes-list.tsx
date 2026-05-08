@@ -1,12 +1,16 @@
+import { parseTags } from "@/lib/tags";
 import type { Note } from "@/lib/types";
 
 interface NotesListProps {
   notes: Note[];
   search: string;
   selectedId: string | null;
+  availableTags: string[];
+  activeTag: string | null;
   onSearchChange: (value: string) => void;
   onCreateNew: () => void;
   onSelect: (note: Note) => void;
+  onTagFilterChange: (tag: string | null) => void;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -18,9 +22,12 @@ export function NotesList({
   notes,
   search,
   selectedId,
+  availableTags,
+  activeTag,
   onSearchChange,
   onCreateNew,
-  onSelect
+  onSelect,
+  onTagFilterChange
 }: NotesListProps) {
   return (
     <section className="panel">
@@ -38,26 +45,60 @@ export function NotesList({
         className="search-input"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
-        placeholder="搜索标题、标记或正文内容"
+        placeholder="搜索标题、标签或正文内容"
         type="search"
       />
 
+      {availableTags.length ? (
+        <div className="tag-filter-bar">
+          <button
+            type="button"
+            className={`tag-filter-chip${activeTag === null ? " active" : ""}`}
+            onClick={() => onTagFilterChange(null)}
+          >
+            全部标签
+          </button>
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={`tag-filter-chip${activeTag === tag ? " active" : ""}`}
+              onClick={() => onTagFilterChange(tag === activeTag ? null : tag)}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="notes-list">
         {notes.length ? (
-          notes.map((note) => (
-            <button
-              key={note.id}
-              type="button"
-              className={`note-row${selectedId === note.id ? " active" : ""}`}
-              onClick={() => onSelect(note)}
-            >
-              <div className="note-row-title">{note.title}</div>
-              <div className="note-row-meta">
-                {note.marker ? <span className="meta-chip">{note.marker}</span> : null}
-                <span className="note-row-date">{dateFormatter.format(new Date(note.updated_at))}</span>
-              </div>
-            </button>
-          ))
+          notes.map((note) => {
+            const tags = parseTags(note.marker);
+
+            return (
+              <button
+                key={note.id}
+                type="button"
+                className={`note-row${selectedId === note.id ? " active" : ""}`}
+                onClick={() => onSelect(note)}
+              >
+                <div className="note-row-title">{note.title}</div>
+                <div className="note-row-meta">
+                  {tags.length ? (
+                    <div className="tag-chip-row compact">
+                      {tags.map((tag) => (
+                        <span key={tag} className="tag-chip">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <span className="note-row-date">{dateFormatter.format(new Date(note.updated_at))}</span>
+                </div>
+              </button>
+            );
+          })
         ) : (
           <div className="empty-state">
             <div>

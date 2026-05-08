@@ -1,4 +1,4 @@
-const TAG_SPLIT_PATTERN = /[,，;；\n]+/;
+const TAG_SPLIT_PATTERN = /[,，;；、\n]+/;
 
 export function normalizeTag(rawTag: string) {
   return rawTag.trim().replace(/\s+/g, " ").toLowerCase();

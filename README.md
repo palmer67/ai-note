@@ -247,3 +247,5 @@ NOTIFY pgrst, 'reload schema';
 当前项目仓库：
 
 `git@github.com:palmer67/ai-note.git`
+
+本项目用于学习全栈 AI 应用开发。

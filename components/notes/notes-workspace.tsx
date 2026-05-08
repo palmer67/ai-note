@@ -339,6 +339,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         />
 
         <AiAnalysisPanel
+          key={selectedNote?.id ?? "empty-note-panel"}
           note={selectedNote}
           isAnalyzing={analysisPending || selectedNote?.ai_status === "loading"}
           error={analysisError}

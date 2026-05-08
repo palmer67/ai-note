@@ -37,8 +37,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "没有找到对应的笔记。" }, { status: 404 });
   }
 
-  await supabase.from("notes").update({ ai_status: "loading" }).eq("id", noteId);
-
   try {
     const breakdown = await analyzeNote({
       title: note.title,

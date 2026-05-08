@@ -560,6 +560,26 @@ button {
   padding-left: 18px;
 }
 
+.analysis-answer-card {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(73, 51, 34, 0.12);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.analysis-answer-card h4 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.analysis-answer {
+  margin: 0;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
 .empty-state {
   display: grid;
   place-items: center;

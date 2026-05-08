@@ -1,5 +1,4 @@
-import OpenAI from "openai";
-
+import { createModelClient, getModelName, runModelRequest } from "@/lib/openai/client";
 import type { ArticleBreakdown } from "@/lib/types";
 
 interface AnalyzeNoteInput {
@@ -27,7 +26,7 @@ const systemPrompt = `
 - 语气务实、具体，不要空泛。
 - 除非文章过短无法分析，否则不要提“信息缺失”。
 - 每个列表保留 3 到 5 条。
-- 优先基于文章正文分析，用户标记只作为弱提示。
+- 优先基于文章正文分析，用户标签只作为弱提示。
 `.trim();
 
 function normalizeArray(value: unknown) {
@@ -58,43 +57,34 @@ function normalizeBreakdown(value: unknown): ArticleBreakdown {
 }
 
 export async function analyzeNote(input: AnalyzeNoteInput) {
-  const apiKey = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY;
-  const baseURL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
-  const model = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
+  const client = createModelClient();
 
-  if (!apiKey) {
-    throw new Error("缺少 DEEPSEEK_API_KEY。");
-  }
-
-  const client = new OpenAI({
-    apiKey,
-    baseURL
-  });
-
-  const response = await client.chat.completions.create({
-    model,
-    response_format: {
-      type: "json_object"
-    },
-    temperature: 0.2,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt
+  const response = await runModelRequest(() =>
+    client.chat.completions.create({
+      model: getModelName(),
+      response_format: {
+        type: "json_object"
       },
-      {
-        role: "user",
-        content: `
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: `
 文章标题：${input.title}
 文章来源链接：${input.sourceUrl ?? "未提供"}
-用户标记：${input.marker ?? "无"}
+用户标签：${input.marker ?? "无"}
 
 文章正文：
 ${input.content}
-        `.trim()
-      }
-    ]
-  });
+          `.trim()
+        }
+      ]
+    })
+  );
 
   const raw = response.choices[0]?.message?.content?.trim();
 

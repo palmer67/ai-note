@@ -13,7 +13,7 @@ export function SignOutButton() {
   return (
     <button
       type="button"
-      className="ghost-button"
+      className="ghost-button quiet-button"
       disabled={pending}
       onClick={() => {
         startTransition(async () => {

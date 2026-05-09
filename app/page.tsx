@@ -15,6 +15,39 @@ const pillars = [
   }
 ];
 
+const heroStats = [
+  {
+    value: "3 步",
+    label: "收藏、标记、分析"
+  },
+  {
+    value: "本地优先",
+    label: "先把产品跑顺，再逐步上线"
+  },
+  {
+    value: "真实骨架",
+    label: "权限、数据库、AI 路由全都有"
+  }
+];
+
+const workflowSteps = [
+  {
+    step: "01",
+    title: "收进你的知识库",
+    body: "看到一篇真的值得反复看的文章，就把链接或正文收进来。"
+  },
+  {
+    step: "02",
+    title: "只做最轻的标记",
+    body: "写几个标签或一句提醒，不要求你当场完成完整总结。"
+  },
+  {
+    step: "03",
+    title: "交给 AI 做结构化拆解",
+    body: "把核心观点、论据、适用场景和启发整理成后续可复用的卡片。"
+  }
+];
+
 export default function HomePage() {
   return (
     <main className="landing-shell grain">
@@ -41,6 +74,14 @@ export default function HomePage() {
             AI Notes 是一个带真实产品骨架的 AI 学习项目：有登录、有角色权限、有数据库策略，也有一条受保护的
             AI 分析链路，能把长文章转成清晰的学习卡片。
           </p>
+          <div className="hero-meta-grid">
+            {heroStats.map((stat) => (
+              <article key={stat.label} className="hero-meta-card">
+                <strong>{stat.value}</strong>
+                <span>{stat.label}</span>
+              </article>
+            ))}
+          </div>
           <div className="hero-actions">
             <Link href="/auth/signup" className="button">
               开始使用
@@ -60,11 +101,16 @@ export default function HomePage() {
           <div className="card-body">
             第一版只专注一件事：把高质量文章保存下来，加一个轻量标记，然后拿到主题、核心观点、论据、适用场景和启发。
           </div>
-          <div className="mini-grid">
-            <span className="feature-chip">登录与角色</span>
-            <span className="feature-chip">用户笔记</span>
-            <span className="feature-chip">管理员可见</span>
-            <span className="feature-chip">受保护 AI 路由</span>
+          <div className="workflow-list">
+            {workflowSteps.map((item) => (
+              <article key={item.step} className="workflow-step">
+                <span className="workflow-step-no">{item.step}</span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
+              </article>
+            ))}
           </div>
         </aside>
       </section>

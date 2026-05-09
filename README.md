@@ -2,38 +2,57 @@
 
 AI Notes 是一个面向学习场景的全栈 AI 笔记应用。
 
-你可以把优质文章保存下来，打一个轻量标记，然后让 AI 自动生成结构化拆解。这个项目不只是一个演示页面，而是一套完整可运行的样板，适合边做边学 AI 开发。
+你可以把在网上看到的优质文章保存下来，补一个轻量标签，然后交给 AI 自动生成结构化拆解结果。这个项目不只是一个展示页面，而是一套真实可运行的产品骨架，适合一边做功能、一边学习全栈 AI 应用开发。
 
 ## 当前已完成的能力
 
 ### 用户侧
 
 - 邮箱密码注册与登录
-- 创建、编辑、删除文章笔记
-- 按标题、标记、正文搜索
+- 新建、编辑、删除文章笔记
+- 按标题、标签、正文内容搜索
+- 支持多标签输入与标签筛选
 - 通过 URL 半自动导入文章标题与正文
-- 对单篇笔记发起 AI 深度拆解
+- URL 导入支持多策略提取：
+  - Readability 正文解析
+  - JSON-LD 兜底
+  - DOM 选择器兜底
+  - 浏览器渲染兜底（可处理部分挑战页，例如掘金）
+- 对单篇笔记发起 AI 分析
+- 基于笔记继续做 AI 问答
 - 保存修改时保留已有 AI 分析结果
 - 一键复制 AI 分析结果
+- 本地导出 AI 分析内容：
+  - 单篇导出：Markdown / JSON / HTML
+  - 批量导出：ZIP 压缩包
 
 ### 管理员侧
 
 - 查看全部用户
 - 查看全部笔记
-- 查看笔记归属用户、标记、AI 状态和正文预览
+- 查看笔记归属用户、标签、AI 状态和正文预览
 - 修改其他用户角色
 - 按用户、AI 状态、关键词筛选后台笔记
 
 ## 技术栈
 
 - **Next.js 16**
-  前端页面和后端路由都在同一个项目里，适合学习全栈开发。
+  前端页面和后端路由在同一个项目内，适合学习全栈开发。
 
 - **Supabase**
   提供认证、Postgres 数据库和 RLS（行级权限控制）。
 
 - **DeepSeek API**
-  用于文章 AI 拆解，当前走兼容 OpenAI SDK 的调用方式。
+  用于文章 AI 分析与问答，当前通过兼容 OpenAI SDK 的方式调用。
+
+- **Readability + JSDOM**
+  用于 URL 导入时的正文抽取增强。
+
+- **Playwright Core**
+  用于导入部分动态渲染或挑战页站点时的浏览器级兜底抓取。
+
+- **JSZip**
+  用于批量导出 AI 分析结果压缩包。
 
 ## 项目结构
 
@@ -43,6 +62,7 @@ app/
   dashboard/                  用户工作台与管理员后台
   api/
     ai/analyze/               AI 分析接口
+    ai/ask-note/              AI 问答接口
     admin/profiles/role/      管理员修改角色接口
     articles/import/          URL 导入接口
 components/
@@ -51,8 +71,9 @@ components/
   layout/                     页面框架
   notes/                      笔记列表、编辑器、AI 结果面板
 lib/
-  auth.ts                     登录上下文与管理员校验
   articles/                   URL 导入与正文提取逻辑
+  auth.ts                     登录上下文与管理员校验
+  exports/                    AI 分析导出逻辑
   openai/                     AI 调用逻辑（当前接 DeepSeek）
   supabase/                   Supabase 客户端与服务端封装
 supabase/
@@ -85,30 +106,26 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 
 ### 3. 初始化 Supabase 数据库
 
-先运行这份一键初始化 / 修复脚本：
+推荐先在 Supabase SQL Editor 里运行：
 
-[20260508020000_bootstrap_repair.sql](./supabase/migrations/20260508020000_bootstrap_repair.sql)
+- [20260508020000_bootstrap_repair.sql](./supabase/migrations/20260508020000_bootstrap_repair.sql)
+- [20260508030000_atomic_role_update.sql](./supabase/migrations/20260508030000_atomic_role_update.sql)
 
-它会完成：
+它们会完成这些事情：
 
 - 创建 `profiles` 表
 - 创建 `notes` 表
-- 创建触发器
+- 创建更新时间触发器
 - 创建管理员判断函数
-- 开启 RLS
-- 创建用户与管理员访问策略
-- 创建“新注册用户自动生成 profile”的逻辑
-- 刷新 schema 缓存
+- 开启并配置 RLS
+- 配置“新注册用户自动创建 profile”
+- 配置管理员角色原子更新，避免并发情况下把最后一个管理员降级
 
-然后再运行这份补充迁移：
+如果改完表结构后页面仍提示 `schema cache` 相关错误，可以在 SQL Editor 执行：
 
-[20260508030000_atomic_role_update.sql](./supabase/migrations/20260508030000_atomic_role_update.sql)
-
-它会完成：
-
-- 创建数据库函数 `update_profile_role_safely(...)`
-- 让管理员角色修改变成原子操作
-- 避免并发情况下把最后一个管理员降没
+```sql
+NOTIFY pgrst, 'reload schema';
+```
 
 ### 4. 启动开发服务器
 
@@ -132,21 +149,17 @@ set role = 'admin'
 where email = '你的邮箱';
 ```
 
-重新登录后，右上角会出现 `管理后台`。
+重新登录后，顶部导航会出现 `管理后台`。
 
 ## 数据库数据在哪里看
 
 ### 登录账号
 
-在 Supabase 左侧菜单：
-
 `Authentication -> Users`
 
-这里看的是“谁能登录系统”。
+这里看的是谁能登录系统。
 
 ### 用户资料与角色
-
-在：
 
 `Table Editor -> public.profiles`
 
@@ -158,35 +171,26 @@ where email = '你的邮箱';
 
 ### 笔记与 AI 结果
 
-在：
-
 `Table Editor -> public.notes`
 
 这里看的是：
 
 - 笔记标题
-- 标记
+- 标签
 - 正文
 - AI 分析结果
 - AI 状态
 
-### 临时查数据
-
-也可以直接在 `SQL Editor` 里执行：
+也可以在 `SQL Editor` 里直接执行：
 
 ```sql
 select * from public.profiles;
 select * from public.notes order by updated_at desc;
 ```
 
-## AI 调用说明
+## AI 分析与导出说明
 
-当前项目使用 DeepSeek：
-
-- 默认模型：`deepseek-v4-flash`
-- 默认地址：`https://api.deepseek.com`
-
-AI 结果要求返回固定 JSON 结构，包含：
+当前 AI 分析结果固定为结构化输出，包含：
 
 - `topic`
 - `coreArgument`
@@ -194,7 +198,16 @@ AI 结果要求返回固定 JSON 结构，包含：
 - `bestFitScenarios`
 - `takeaways`
 
-这些结果会被保存回当前笔记，方便后续查看和后台管理。
+这些结果会保存回当前笔记，方便继续问答、后台查看和本地导出。
+
+导出时只带这些内容：
+
+- 标题
+- 来源链接
+- 标签
+- AI 结构化分析结果
+
+不会导出原始正文，因为很多从网页抓下来的正文需要额外清理。
 
 ## 权限规则
 
@@ -216,31 +229,30 @@ AI 结果要求返回固定 JSON 结构，包含：
 
 推荐优先级：
 
-1. 笔记标签体系
+1. 多格式导出继续增强
 2. 多篇笔记联合检索
-3. 基于笔记的 AI 问答
-4. 部署到线上
+3. 基于笔记集的 AI 问答
+4. 部署上线
+5. 更完整的剪藏与清洗能力
 
 ## 学习价值
 
 这个项目适合用来理解这些全栈 AI 开发概念：
 
-- 前端页面如何和数据交互
-- 后端为什么要保护模型密钥
+- 前端页面如何与数据库交互
+- 为什么模型密钥必须放在服务端
 - Supabase 认证和业务用户资料的关系
 - RLS 如何限制用户只能访问自己的数据
 - 管理员权限如何落到真实接口里
-- AI 输出如何回写数据库
+- AI 输出如何结构化并回写数据库
+- 浏览器级抓取为什么能解决部分动态站点导入问题
+- 导出能力如何基于前端本地文件生成完成闭环
 
 ## 注意事项
 
 - `.env.local` 不要提交到 GitHub
 - 如果你在聊天里暴露过 DeepSeek key，建议去 DeepSeek 后台重新生成新 key
-- 如果 Supabase 改完表后页面仍提示 `schema cache` 相关错误，可以在 SQL Editor 执行：
-
-```sql
-NOTIFY pgrst, 'reload schema';
-```
+- 浏览器级导入兜底依赖本机可用的 Chrome / Edge
 
 ## 仓库
 

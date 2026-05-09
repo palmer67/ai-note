@@ -1221,11 +1221,34 @@ button {
   margin-top: 10px;
 }
 
+.admin-notes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-filter-stack {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid rgba(73, 51, 34, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.6);
+}
+
 .admin-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(73, 51, 34, 0.1);
   border-radius: 18px;
   background: rgba(255, 252, 247, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.admin-table-wrap-scroll {
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .admin-table {
@@ -1237,9 +1260,14 @@ button {
 .admin-table th,
 .admin-table td {
   padding: 14px 12px;
-  border-bottom: 1px solid rgba(73, 51, 34, 0.12);
+  border-bottom: 1px solid rgba(73, 51, 34, 0.16);
   text-align: left;
   vertical-align: top;
+}
+
+.admin-table th + th,
+.admin-table td + td {
+  border-left: 1px solid rgba(73, 51, 34, 0.12);
 }
 
 .admin-table th {
@@ -1248,20 +1276,32 @@ button {
   text-transform: uppercase;
   color: var(--ink-soft);
   background: rgba(255, 250, 242, 0.84);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .admin-table tbody tr {
   transition: background 160ms ease;
 }
 
+.admin-table tbody tr:nth-child(even) {
+  background: rgba(255, 250, 242, 0.38);
+}
+
 .admin-table tbody tr:hover {
-  background: rgba(255, 250, 242, 0.52);
+  background: rgba(255, 244, 232, 0.64);
 }
 
 .admin-table details summary {
   cursor: pointer;
   color: var(--ink);
   line-height: 1.6;
+}
+
+.admin-notes-table-wrap .admin-table td {
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .table-actions {
@@ -1275,7 +1315,29 @@ button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-  margin-bottom: 14px;
+}
+
+.admin-tag-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(73, 51, 34, 0.1);
+}
+
+.admin-tag-label {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.admin-tag-filter-bar {
+  margin-top: 0;
+}
+
+.admin-tag-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
 }
 
 .admin-select {

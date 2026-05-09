@@ -1,9 +1,11 @@
 "use client";
-import { useDeferredValue, useState, useTransition } from "react";
+
+import { useState, useTransition } from "react";
 
 import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { NotesList } from "@/components/notes/notes-list";
+import { canExportAiAnalysis, downloadBatchAiAnalysisZip } from "@/lib/exports/ai-analysis";
 import { createClient } from "@/lib/supabase/client";
 import { parseTags, serializeTags } from "@/lib/tags";
 import type { Note, NoteDraft, Profile } from "@/lib/types";
@@ -56,6 +58,15 @@ function matchesSearch(note: Note, query: string) {
   return [note.title, tags, note.content].some((value) => value.toLowerCase().includes(normalized));
 }
 
+function getFilteredNotes(notes: Note[], query: string, tag: string | null) {
+  return notes.filter((note) => {
+    const matchesKeywordSearch = matchesSearch(note, query);
+    const matchesTagFilter = tag ? parseTags(note.marker).includes(tag) : true;
+
+    return matchesKeywordSearch && matchesTagFilter;
+  });
+}
+
 export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceProps) {
   const supabase = createClient();
   const [notes, setNotes] = useState(() => sortNotes(initialNotes));
@@ -65,26 +76,46 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const deferredSearch = useDeferredValue(search);
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
+  const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
   const [savePending, startSave] = useTransition();
   const [deletePending, startDelete] = useTransition();
   const [analysisPending, startAnalysis] = useTransition();
   const [importPending, startImport] = useTransition();
+  const [batchExportPending, startBatchExport] = useTransition();
 
   const selectedNote = selectedId ? notes.find((note) => note.id === selectedId) ?? null : null;
   const availableTags = Array.from(new Set(notes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
     left.localeCompare(right, "zh-CN")
   );
   const analyzedCount = notes.filter((note) => note.ai_status === "done").length;
+  const filteredNotes = getFilteredNotes(notes, search, activeTag);
 
-  const filteredNotes = notes.filter((note) => {
-    const matchesKeywordSearch = matchesSearch(note, deferredSearch);
-    const matchesTagFilter = activeTag ? parseTags(note.marker).includes(activeTag) : true;
+  const exportableFilteredNotes = filteredNotes.filter((note) => canExportAiAnalysis(note));
+  const visibleSelectedExportIds = selectedExportIds.filter((id) =>
+    exportableFilteredNotes.some((note) => note.id === id)
+  );
 
-    return matchesKeywordSearch && matchesTagFilter;
-  });
+  function pruneSelectedExports(nextNotes: Note[], nextSearch: string, nextTag: string | null) {
+    if (!batchMode) {
+      return;
+    }
+
+    const visibleExportIds = new Set(
+      getFilteredNotes(nextNotes, nextSearch, nextTag)
+        .filter((note) => canExportAiAnalysis(note))
+        .map((note) => note.id)
+    );
+
+    setSelectedExportIds((current) => current.filter((id) => visibleExportIds.has(id)));
+  }
 
   function selectNote(note: Note) {
+    if (batchMode) {
+      return;
+    }
+
     setSelectedId(note.id);
     setDraft(toDraft(note));
     setFeedback(null);
@@ -92,6 +123,10 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   }
 
   function createNewNote() {
+    if (batchMode) {
+      return;
+    }
+
     setSelectedId(null);
     setDraft(blankDraft);
     setFeedback(null);
@@ -143,7 +178,10 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         }
 
         const savedNote = data as unknown as Note;
-        setNotes((current) => sortNotes(current.map((note) => (note.id === savedNote.id ? savedNote : note))));
+        const nextNotes = sortNotes(notes.map((note) => (note.id === savedNote.id ? savedNote : note)));
+
+        setNotes(nextNotes);
+        pruneSelectedExports(nextNotes, search, activeTag);
         setDraft(toDraft(savedNote));
         setFeedback("笔记已保存。现有 AI 分析会保留；如果你想基于新内容更新分析，可以手动重新运行。");
         return;
@@ -167,7 +205,10 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       }
 
       const savedNote = data as unknown as Note;
-      setNotes((current) => sortNotes([savedNote, ...current]));
+      const nextNotes = sortNotes([savedNote, ...notes]);
+
+      setNotes(nextNotes);
+      pruneSelectedExports(nextNotes, search, activeTag);
       setSelectedId(savedNote.id);
       setDraft(toDraft(savedNote));
       setFeedback("笔记已保存。现在可以在右侧发起 AI 分析。");
@@ -200,6 +241,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       const nextSelected = remaining[0] ?? null;
 
       setNotes(remaining);
+      pruneSelectedExports(remaining, search, activeTag);
       setSelectedId(nextSelected?.id ?? null);
       setDraft(toDraft(nextSelected));
       setFeedback("笔记已删除。");
@@ -283,8 +325,65 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         return;
       }
 
-      setNotes((current) => sortNotes(current.map((note) => (note.id === payload.note?.id ? payload.note : note))));
+      const nextNotes = sortNotes(notes.map((note) => (note.id === payload.note?.id ? payload.note : note)));
+
+      setNotes(nextNotes);
+      pruneSelectedExports(nextNotes, search, activeTag);
       setFeedback("AI 分析结果已保存到当前笔记。");
+    });
+  }
+
+  function handleEnterBatchMode() {
+    setBatchMode(true);
+    setSelectedExportIds([]);
+    setBatchFeedback(null);
+  }
+
+  function handleExitBatchMode() {
+    setBatchMode(false);
+    setSelectedExportIds([]);
+    setBatchFeedback(null);
+  }
+
+  function handleToggleBatchSelection(noteId: string) {
+    setBatchFeedback(null);
+    setSelectedExportIds((current) =>
+      current.includes(noteId) ? current.filter((id) => id !== noteId) : [...current, noteId]
+    );
+  }
+
+  function handleSelectAllExportable() {
+    if (!exportableFilteredNotes.length) {
+      setBatchFeedback("当前筛选结果里没有可导出的 AI 分析内容。");
+      return;
+    }
+
+    setBatchFeedback(null);
+    setSelectedExportIds(exportableFilteredNotes.map((note) => note.id));
+  }
+
+  function handleClearExportSelection() {
+    setBatchFeedback(null);
+    setSelectedExportIds([]);
+  }
+
+  function handleBatchExport() {
+    const notesToExport = exportableFilteredNotes.filter((note) => visibleSelectedExportIds.includes(note.id));
+
+    if (!notesToExport.length) {
+      setBatchFeedback("请先选择至少一篇已完成 AI 分析的笔记。");
+      return;
+    }
+
+    setBatchFeedback(null);
+
+    startBatchExport(async () => {
+      try {
+        await downloadBatchAiAnalysisZip(notesToExport);
+        setBatchFeedback(`已导出 ${notesToExport.length} 篇笔记，压缩包中包含 Markdown、JSON 和 HTML。`);
+      } catch (error) {
+        setBatchFeedback(error instanceof Error ? `批量导出失败：${error.message}` : "批量导出失败。");
+      }
     });
   }
 
@@ -296,8 +395,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             <span className="eyebrow">阅读与分析</span>
             <h1 className="panel-title">你的阅读工作台</h1>
             <p className="panel-subtitle">
-              这里是前端的主要操作区。下方笔记列表来自 Supabase，右侧 AI 分析则通过后端安全路由完成，
-              因为模型密钥不能直接暴露在浏览器里。
+              这里是主要操作区。左侧用来筛选和管理笔记，中间负责整理内容，右侧可以生成和导出 AI 分析结果。
             </p>
           </div>
           <div className="inline-actions">
@@ -331,10 +429,27 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           selectedId={selectedId}
           availableTags={availableTags}
           activeTag={activeTag}
-          onSearchChange={setSearch}
+          batchMode={batchMode}
+          selectedExportIds={selectedExportIds}
+          visibleSelectedExportCount={visibleSelectedExportIds.length}
+          batchFeedback={batchFeedback}
+          batchExportPending={batchExportPending}
+          onSearchChange={(value) => {
+            setSearch(value);
+            pruneSelectedExports(notes, value, activeTag);
+          }}
           onCreateNew={createNewNote}
           onSelect={selectNote}
-          onTagFilterChange={setActiveTag}
+          onTagFilterChange={(value) => {
+            setActiveTag(value);
+            pruneSelectedExports(notes, search, value);
+          }}
+          onEnterBatchMode={handleEnterBatchMode}
+          onExitBatchMode={handleExitBatchMode}
+          onToggleBatchSelection={handleToggleBatchSelection}
+          onSelectAllExportable={handleSelectAllExportable}
+          onClearExportSelection={handleClearExportSelection}
+          onBatchExport={handleBatchExport}
         />
 
         <NoteEditor

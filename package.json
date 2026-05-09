@@ -13,6 +13,7 @@
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "jsdom": "^29.1.1",
+    "jszip": "^3.10.1",
     "next": "latest",
     "openai": "latest",
     "playwright-core": "^1.59.1",

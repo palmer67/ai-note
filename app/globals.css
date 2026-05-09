@@ -838,6 +838,10 @@ button {
   overflow: hidden;
 }
 
+.notes-batch-feedback {
+  margin-top: 12px;
+}
+
 .note-row {
   --note-accent: rgba(161, 61, 45, 0.13);
   --note-border: rgba(161, 61, 45, 0.12);
@@ -895,6 +899,10 @@ button {
   box-shadow: 0 20px 40px rgba(73, 51, 34, 0.1);
 }
 
+.note-row.batch-mode {
+  padding-top: 16px;
+}
+
 .note-row.active {
   --note-accent: rgba(161, 61, 45, 0.22);
   border-color: rgba(161, 61, 45, 0.28);
@@ -904,6 +912,67 @@ button {
 
 .note-row.active::before {
   width: 7px;
+}
+
+.note-row.export-selected {
+  --note-accent: rgba(94, 106, 79, 0.24);
+  border-color: rgba(94, 106, 79, 0.3);
+  background: linear-gradient(180deg, rgba(245, 249, 241, 0.98) 0%, rgba(235, 243, 229, 0.92) 100%);
+  box-shadow: 0 20px 38px rgba(94, 106, 79, 0.12);
+}
+
+.note-row.export-selected::before {
+  width: 7px;
+}
+
+.note-row.export-disabled {
+  opacity: 0.72;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.84) 0%, rgba(244, 239, 233, 0.82) 100%);
+  box-shadow: none;
+}
+
+.note-row:disabled {
+  cursor: not-allowed;
+}
+
+.note-row:disabled:hover {
+  transform: none;
+  border-color: var(--note-border);
+  box-shadow: none;
+}
+
+.note-row-selection {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.selection-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(73, 51, 34, 0.12);
+  background: rgba(255, 250, 242, 0.9);
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.selection-indicator.selected {
+  border-color: rgba(94, 106, 79, 0.24);
+  background: rgba(94, 106, 79, 0.12);
+  color: #46503a;
+}
+
+.selection-indicator.disabled {
+  border-color: rgba(73, 51, 34, 0.08);
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(91, 74, 63, 0.82);
 }
 
 .note-row-title {
@@ -944,6 +1013,15 @@ button {
   font-size: 0.77rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.note-row-export-hint {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  margin-top: 10px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
 }
 
 .editor-card {
@@ -1052,13 +1130,49 @@ button {
 .ai-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ai-panel-body {
   min-height: 0;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.ai-actions {
+  position: relative;
+}
+
+.action-menu {
+  position: relative;
+}
+
+.format-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 170px;
+  padding: 8px;
+  border: 1px solid rgba(73, 51, 34, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.96);
+  box-shadow: 0 20px 40px rgba(61, 43, 30, 0.14);
+}
+
+.format-menu-item {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 0 12px;
+}
+
+.format-menu-item:hover {
+  background: rgba(161, 61, 45, 0.08);
 }
 
 .ai-question-field textarea {

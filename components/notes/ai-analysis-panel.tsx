@@ -2,6 +2,11 @@
 
 import { useState, useTransition } from "react";
 
+import {
+  downloadSingleAiAnalysisExport,
+  getExportFormatLabel,
+  type ExportFormat
+} from "@/lib/exports/ai-analysis";
 import type { Note } from "@/lib/types";
 
 interface AiAnalysisPanelProps {
@@ -10,6 +15,8 @@ interface AiAnalysisPanelProps {
   error: string | null;
   onAnalyze: () => void;
 }
+
+const exportFormats: ExportFormat[] = ["markdown", "json", "html"];
 
 function getAiStatusLabel(status: Note["ai_status"]) {
   switch (status) {
@@ -52,11 +59,14 @@ function buildCopyText(note: NonNullable<AiAnalysisPanelProps["note"]>) {
 export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnalysisPanelProps) {
   const summary = note?.ai_summary;
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [askError, setAskError] = useState<string | null>(null);
   const [copyPending, startCopy] = useTransition();
   const [askPending, startAsk] = useTransition();
+  const [exportPending, startExport] = useTransition();
 
   function handleCopy() {
     if (!note?.ai_summary) {
@@ -72,6 +82,25 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
         window.setTimeout(() => setCopyFeedback(null), 1800);
       } catch {
         setCopyFeedback("复制失败，请手动复制。");
+      }
+    });
+  }
+
+  function handleSingleExport(format: ExportFormat) {
+    if (!note?.ai_summary) {
+      return;
+    }
+
+    setExportFeedback(null);
+    setExportMenuOpen(false);
+
+    startExport(async () => {
+      try {
+        await downloadSingleAiAnalysisExport(note, format);
+        setExportFeedback(`已导出 ${getExportFormatLabel(format)} 文件。`);
+        window.setTimeout(() => setExportFeedback(null), 2200);
+      } catch (downloadError) {
+        setExportFeedback(downloadError instanceof Error ? `导出失败：${downloadError.message}` : "导出失败。");
       }
     });
   }
@@ -118,11 +147,32 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
           <h2 className="panel-title">AI 阅读助手</h2>
           <p className="panel-subtitle">先做文章拆解，再围绕这篇笔记继续追问更细的问题。</p>
         </div>
-        <div className="table-actions">
+        <div className="table-actions ai-actions">
           {summary ? (
-            <button type="button" className="ghost-button" disabled={copyPending} onClick={handleCopy}>
-              {copyPending ? "复制中..." : "复制分析"}
-            </button>
+            <>
+              <button type="button" className="ghost-button" disabled={copyPending} onClick={handleCopy}>
+                {copyPending ? "复制中..." : "复制分析"}
+              </button>
+              <div className="action-menu">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={exportPending}
+                  onClick={() => setExportMenuOpen((current) => !current)}
+                >
+                  {exportPending ? "导出中..." : "导出"}
+                </button>
+                {exportMenuOpen ? (
+                  <div className="format-menu">
+                    {exportFormats.map((format) => (
+                      <button key={format} type="button" className="format-menu-item" onClick={() => handleSingleExport(format)}>
+                        导出为 {getExportFormatLabel(format)}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </>
           ) : null}
           <button type="button" className="button secondary" disabled={!note || isAnalyzing} onClick={onAnalyze}>
             {isAnalyzing ? "分析中..." : "开始分析"}
@@ -217,6 +267,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
       </div>
 
       {copyFeedback ? <p className={`feedback${copyFeedback.includes("失败") ? " error" : ""}`}>{copyFeedback}</p> : null}
+      {exportFeedback ? <p className={`feedback${exportFeedback.includes("失败") ? " error" : ""}`}>{exportFeedback}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
     </section>
   );

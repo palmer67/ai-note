@@ -2,6 +2,8 @@
 
 import { useDeferredValue, useState, useTransition } from "react";
 
+import { canExportAiAnalysis, downloadBatchAiAnalysisZip } from "@/lib/exports/ai-analysis";
+import { parseTags } from "@/lib/tags";
 import type { AiStatus, AppRole, Note, Profile } from "@/lib/types";
 
 interface AdminOverviewProps {
@@ -58,23 +60,34 @@ function matchesKeyword(note: Note, keyword: string) {
 export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverviewProps) {
   const [profileRows, setProfileRows] = useState(profiles);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [notesFeedback, setNotesFeedback] = useState<string | null>(null);
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [exportPending, startExport] = useTransition();
   const [selectedUserId, setSelectedUserId] = useState("all");
   const [selectedAiStatus, setSelectedAiStatus] = useState<"all" | AiStatus>("all");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [markerKeyword, setMarkerKeyword] = useState("");
   const deferredMarkerKeyword = useDeferredValue(markerKeyword);
 
   const profileById = new Map(profileRows.map((profile) => [profile.id, profile]));
   const adminCount = profileRows.filter((profile) => profile.role === "admin").length;
 
-  const filteredNotes = notes.filter((note) => {
+  const scopedNotes = notes.filter((note) => {
     const matchesUser = selectedUserId === "all" || note.user_id === selectedUserId;
     const matchesStatus = selectedAiStatus === "all" || note.ai_status === selectedAiStatus;
     const matchesMarker = matchesKeyword(note, deferredMarkerKeyword);
 
     return matchesUser && matchesStatus && matchesMarker;
   });
+  const availableTags = Array.from(new Set(scopedNotes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
+    left.localeCompare(right, "zh-CN")
+  );
+  const effectiveActiveTag = activeTag && availableTags.includes(activeTag) ? activeTag : null;
+  const filteredNotes = scopedNotes.filter((note) =>
+    effectiveActiveTag ? parseTags(note.marker).includes(effectiveActiveTag) : true
+  );
+  const exportableFilteredNotes = filteredNotes.filter((note) => canExportAiAnalysis(note));
 
   function handleRoleToggle(targetProfile: Profile) {
     const nextRole: AppRole = targetProfile.role === "admin" ? "user" : "admin";
@@ -113,6 +126,24 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
         setFeedback("角色更新时发生网络错误。");
       } finally {
         setPendingProfileId(null);
+      }
+    });
+  }
+
+  function handleExportFilteredNotes() {
+    if (!exportableFilteredNotes.length) {
+      setNotesFeedback("当前筛选结果里没有可导出的 AI 分析内容。");
+      return;
+    }
+
+    setNotesFeedback(null);
+
+    startExport(async () => {
+      try {
+        await downloadBatchAiAnalysisZip(exportableFilteredNotes);
+        setNotesFeedback(`已导出 ${exportableFilteredNotes.length} 条笔记，压缩包中包含 Markdown、JSON 和 HTML。`);
+      } catch (error) {
+        setNotesFeedback(error instanceof Error ? `导出失败：${error.message}` : "导出失败。");
       }
     });
   }
@@ -157,7 +188,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
           </div>
         </div>
 
-        <div className="admin-table-wrap">
+        <div className="admin-table-wrap admin-table-wrap-scroll">
           <table className="admin-table">
             <thead>
               <tr>
@@ -212,66 +243,105 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
           <div>
             <h2 className="panel-title">全部笔记</h2>
             <p className="panel-subtitle">
-              按用户、AI 状态和关键词筛选全局笔记，更快找到你要查看的内容。
+              按用户、AI 状态、标签和关键词筛选全局笔记，并可直接导出当前筛选结果。
             </p>
           </div>
-          <span className="inline-badge">当前结果：{filteredNotes.length} 条</span>
-        </div>
-
-        <div className="admin-filters">
-          <div className="field">
-            <label htmlFor="admin-user-filter">按用户筛选</label>
-            <select
-              id="admin-user-filter"
-              className="admin-select"
-              value={selectedUserId}
-              onChange={(event) => setSelectedUserId(event.target.value)}
+          <div className="admin-notes-header-actions">
+            <span className="inline-badge">当前结果：{filteredNotes.length} 条</span>
+            <button
+              type="button"
+              className="mini-button primary"
+              disabled={!exportableFilteredNotes.length || exportPending}
+              onClick={handleExportFilteredNotes}
             >
-              <option value="all">全部用户</option>
-              {profileRows.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.email}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field">
-            <label htmlFor="admin-status-filter">按 AI 状态筛选</label>
-            <select
-              id="admin-status-filter"
-              className="admin-select"
-              value={selectedAiStatus}
-              onChange={(event) => setSelectedAiStatus(event.target.value as "all" | AiStatus)}
-            >
-              <option value="all">全部状态</option>
-              <option value="idle">未分析</option>
-              <option value="loading">分析中</option>
-              <option value="done">已完成</option>
-              <option value="error">失败</option>
-            </select>
-          </div>
-
-          <div className="field">
-            <label htmlFor="admin-marker-filter">按关键词筛选</label>
-            <input
-              id="admin-marker-filter"
-              className="admin-select"
-              type="text"
-              value={markerKeyword}
-              onChange={(event) => setMarkerKeyword(event.target.value)}
-              placeholder="搜索标题、标记、链接或正文"
-            />
+              {exportPending ? "导出中..." : "导出当前筛选结果"}
+            </button>
           </div>
         </div>
 
-        <div className="admin-table-wrap">
+        <div className="admin-filter-stack">
+          <div className="admin-filters">
+            <div className="field">
+              <label htmlFor="admin-user-filter">按用户筛选</label>
+              <select
+                id="admin-user-filter"
+                className="admin-select"
+                value={selectedUserId}
+                onChange={(event) => setSelectedUserId(event.target.value)}
+              >
+                <option value="all">全部用户</option>
+                {profileRows.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="admin-status-filter">按 AI 状态筛选</label>
+              <select
+                id="admin-status-filter"
+                className="admin-select"
+                value={selectedAiStatus}
+                onChange={(event) => setSelectedAiStatus(event.target.value as "all" | AiStatus)}
+              >
+                <option value="all">全部状态</option>
+                <option value="idle">未分析</option>
+                <option value="loading">分析中</option>
+                <option value="done">已完成</option>
+                <option value="error">失败</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="admin-marker-filter">按关键词筛选</label>
+              <input
+                id="admin-marker-filter"
+                className="admin-select"
+                type="text"
+                value={markerKeyword}
+                onChange={(event) => setMarkerKeyword(event.target.value)}
+                placeholder="搜索标题、标记、链接或正文"
+              />
+            </div>
+          </div>
+
+          {availableTags.length ? (
+            <div className="admin-tag-section">
+              <span className="admin-tag-label">按标签筛选</span>
+              <div className="tag-filter-bar admin-tag-filter-bar">
+                <button
+                  type="button"
+                  className={`tag-filter-chip${effectiveActiveTag === null ? " active" : ""}`}
+                  onClick={() => setActiveTag(null)}
+                >
+                  全部标签
+                </button>
+                {availableTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`tag-filter-chip${effectiveActiveTag === tag ? " active" : ""}`}
+                    onClick={() => setActiveTag(tag === effectiveActiveTag ? null : tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {notesFeedback ? <p className={`feedback${notesFeedback.includes("失败") ? " error" : ""}`}>{notesFeedback}</p> : null}
+        </div>
+
+        <div className="admin-table-wrap admin-notes-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
                 <th>归属用户</th>
                 <th>标题</th>
-                <th>标记</th>
+                <th>标签</th>
                 <th>AI</th>
                 <th>更新时间</th>
                 <th>正文内容</th>
@@ -281,6 +351,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
               {filteredNotes.length ? (
                 filteredNotes.map((note) => {
                   const owner = profileById.get(note.user_id);
+                  const tags = parseTags(note.marker);
 
                   return (
                     <tr key={note.id}>
@@ -295,7 +366,19 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                           </div>
                         ) : null}
                       </td>
-                      <td>{note.marker ? <span className="inline-badge">{note.marker}</span> : <span className="muted">无</span>}</td>
+                      <td>
+                        {tags.length ? (
+                          <div className="admin-tag-stack">
+                            {tags.map((tag) => (
+                              <span key={tag} className="tag-chip">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="muted">无</span>
+                        )}
+                      </td>
                       <td>{getAiStatusLabel(note.ai_status)}</td>
                       <td>{dateFormatter.format(new Date(note.updated_at))}</td>
                       <td>

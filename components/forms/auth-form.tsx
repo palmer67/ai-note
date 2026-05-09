@@ -98,7 +98,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <section className="auth-card">
+    <section className="auth-card auth-form-card">
       <div className="stack">
         <span className="eyebrow">{isSignIn ? "欢迎回来" : "创建你的空间"}</span>
         <div>
@@ -110,7 +110,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           </p>
         </div>
 
-        <form className="stack" onSubmit={handleSubmit}>
+        <form className="stack auth-form-fields" onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="email">邮箱</label>
             <input
@@ -137,14 +137,14 @@ export function AuthForm({ mode }: AuthFormProps) {
             />
           </div>
 
-          {feedback ? <p className={`feedback${isError ? " error" : ""}`}>{feedback}</p> : null}
+          {feedback ? <p className={`feedback auth-feedback${isError ? " error" : ""}`}>{feedback}</p> : null}
 
           <button className="button" type="submit" disabled={pending}>
             {pending ? "处理中..." : isSignIn ? "登录" : "注册账号"}
           </button>
         </form>
 
-        <p className="help-text">
+        <p className="help-text auth-switch-text">
           {isSignIn ? "还没有账号？" : "已经有账号了？"}{" "}
           <Link href={isSignIn ? "/auth/signup" : "/auth/signin"} className="small-link">
             {isSignIn ? "去注册" : "去登录"}

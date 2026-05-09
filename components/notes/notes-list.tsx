@@ -30,15 +30,18 @@ export function NotesList({
   onTagFilterChange
 }: NotesListProps) {
   return (
-    <section className="panel">
+    <section className="panel notes-panel">
       <div className="panel-header">
         <div>
           <h2 className="panel-title">已保存文章</h2>
           <p className="panel-subtitle">先搜索，再快速回到你想继续整理的那篇文章。</p>
         </div>
-        <button type="button" className="ghost-button" onClick={onCreateNew}>
-          新建笔记
-        </button>
+        <div className="notes-panel-actions">
+          <span className="inline-badge">{notes.length} 篇结果</span>
+          <button type="button" className="ghost-button" onClick={onCreateNew}>
+            新建笔记
+          </button>
+        </div>
       </div>
 
       <input

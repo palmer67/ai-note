@@ -1,6 +1,4 @@
 "use client";
-
-import Link from "next/link";
 import { useDeferredValue, useState, useTransition } from "react";
 
 import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
@@ -77,6 +75,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const availableTags = Array.from(new Set(notes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
     left.localeCompare(right, "zh-CN")
   );
+  const analyzedCount = notes.filter((note) => note.ai_status === "done").length;
 
   const filteredNotes = notes.filter((note) => {
     const matchesKeywordSearch = matchesSearch(note, deferredSearch);
@@ -290,10 +289,11 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   }
 
   return (
-    <div className="stack">
-      <section className="panel">
+    <div className="stack notes-workspace">
+      <section className="panel workspace-overview-panel">
         <div className="panel-header">
-          <div>
+          <div className="workspace-heading">
+            <span className="eyebrow">阅读与分析</span>
             <h1 className="panel-title">你的阅读工作台</h1>
             <p className="panel-subtitle">
               这里是前端的主要操作区。下方笔记列表来自 Supabase，右侧 AI 分析则通过后端安全路由完成，
@@ -302,12 +302,25 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           </div>
           <div className="inline-actions">
             <span className={`role-pill ${currentProfile.role}`}>{currentProfile.email}</span>
-            {currentProfile.role === "admin" ? (
-              <Link href="/dashboard/admin" className="ghost-button">
-                查看全部用户
-              </Link>
-            ) : null}
           </div>
+        </div>
+        <div className="workspace-summary-strip">
+          <article className="summary-chip">
+            <strong>{notes.length}</strong>
+            <span>已保存文章</span>
+          </article>
+          <article className="summary-chip">
+            <strong>{availableTags.length}</strong>
+            <span>常用标签</span>
+          </article>
+          <article className="summary-chip">
+            <strong>{analyzedCount}</strong>
+            <span>已完成 AI 分析</span>
+          </article>
+          <article className="summary-chip summary-chip-wide">
+            <strong>{selectedNote ? "进行中" : "未选择"}</strong>
+            <span>{selectedNote ? selectedNote.title : "选择一篇文章开始工作"}</span>
+          </article>
         </div>
       </section>
 

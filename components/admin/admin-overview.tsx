@@ -119,9 +119,10 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
 
   return (
     <section className="admin-grid">
-      <div className="panel">
+      <div className="panel overview-banner">
         <div className="panel-header">
           <div>
+            <span className="eyebrow">系统总览</span>
             <h1 className="panel-title">管理员总览中心</h1>
             <p className="panel-subtitle">
               这里可以查看全局用户与全部笔记，也可以安全地调整其他用户的角色。
@@ -129,25 +130,24 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
           </div>
           <span className="role-pill admin">全局只读 + 角色管理</span>
         </div>
+        <div className="admin-summary-strip">
+          <article className="summary-chip">
+            <strong>{profileRows.length}</strong>
+            <span>总账号数</span>
+          </article>
+          <article className="summary-chip">
+            <strong>{adminCount}</strong>
+            <span>管理员数量</span>
+          </article>
+          <article className="summary-chip">
+            <strong>{notes.length}</strong>
+            <span>已保存文章数</span>
+          </article>
+        </div>
         {feedback ? <p className={`feedback${feedback.includes("失败") || feedback.includes("错误") ? " error" : ""}`}>{feedback}</p> : null}
       </div>
 
-      <div className="metrics-grid">
-        <article className="metric-card">
-          <h3>{profileRows.length}</h3>
-          <p>总账号数</p>
-        </article>
-        <article className="metric-card">
-          <h3>{adminCount}</h3>
-          <p>管理员数量</p>
-        </article>
-        <article className="metric-card">
-          <h3>{notes.length}</h3>
-          <p>已保存文章数</p>
-        </article>
-      </div>
-
-      <div className="panel">
+      <div className="panel admin-section-panel">
         <div className="panel-header">
           <div>
             <h2 className="panel-title">用户列表</h2>
@@ -157,55 +157,57 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
           </div>
         </div>
 
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>邮箱</th>
-              <th>角色</th>
-              <th>创建时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profileRows.map((profile) => {
-              const isCurrentAdmin = profile.id === currentAdminId;
-              const isSavingThisRow = pending && pendingProfileId === profile.id;
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>邮箱</th>
+                <th>角色</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profileRows.map((profile) => {
+                const isCurrentAdmin = profile.id === currentAdminId;
+                const isSavingThisRow = pending && pendingProfileId === profile.id;
 
-              return (
-                <tr key={profile.id}>
-                  <td>{profile.email}</td>
-                  <td>
-                    <span className={`role-pill ${profile.role}`}>{getRoleLabel(profile.role)}</span>
-                  </td>
-                  <td>{dateFormatter.format(new Date(profile.created_at))}</td>
-                  <td>
-                    {isCurrentAdmin ? (
-                      <span className="muted">当前账号不可改</span>
-                    ) : (
-                      <div className="table-actions">
-                        <button
-                          type="button"
-                          className={`mini-button${profile.role === "user" ? " primary" : ""}`}
-                          disabled={isSavingThisRow}
-                          onClick={() => handleRoleToggle(profile)}
-                        >
-                          {isSavingThisRow
-                            ? "保存中..."
-                            : profile.role === "admin"
-                              ? "降为用户"
-                              : "设为管理员"}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                return (
+                  <tr key={profile.id}>
+                    <td>{profile.email}</td>
+                    <td>
+                      <span className={`role-pill ${profile.role}`}>{getRoleLabel(profile.role)}</span>
+                    </td>
+                    <td>{dateFormatter.format(new Date(profile.created_at))}</td>
+                    <td>
+                      {isCurrentAdmin ? (
+                        <span className="muted">当前账号不可改</span>
+                      ) : (
+                        <div className="table-actions">
+                          <button
+                            type="button"
+                            className={`mini-button${profile.role === "user" ? " primary" : ""}`}
+                            disabled={isSavingThisRow}
+                            onClick={() => handleRoleToggle(profile)}
+                          >
+                            {isSavingThisRow
+                              ? "保存中..."
+                              : profile.role === "admin"
+                                ? "降为用户"
+                                : "设为管理员"}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="panel">
+      <div className="panel admin-section-panel">
         <div className="panel-header">
           <div>
             <h2 className="panel-title">全部笔记</h2>
@@ -263,61 +265,63 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
           </div>
         </div>
 
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>归属用户</th>
-              <th>标题</th>
-              <th>标记</th>
-              <th>AI</th>
-              <th>更新时间</th>
-              <th>正文内容</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredNotes.length ? (
-              filteredNotes.map((note) => {
-                const owner = profileById.get(note.user_id);
-
-                return (
-                  <tr key={note.id}>
-                    <td>{owner?.email ?? "未知用户"}</td>
-                    <td>
-                      <strong>{note.title}</strong>
-                      {note.source_url ? (
-                        <div>
-                          <a className="small-link" href={note.source_url} rel="noreferrer" target="_blank">
-                            来源链接
-                          </a>
-                        </div>
-                      ) : null}
-                    </td>
-                    <td>{note.marker ? <span className="inline-badge">{note.marker}</span> : <span className="muted">无</span>}</td>
-                    <td>{getAiStatusLabel(note.ai_status)}</td>
-                    <td>{dateFormatter.format(new Date(note.updated_at))}</td>
-                    <td>
-                      <details>
-                        <summary>{previewText(note.content)}</summary>
-                        <p className="muted">{note.content}</p>
-                      </details>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <td colSpan={6}>
-                  <div className="empty-state admin-empty-state">
-                    <div>
-                      <strong>没有匹配到筛选结果。</strong>
-                      <p>你可以切换用户、AI 状态，或者清空关键词重新查看全部笔记。</p>
-                    </div>
-                  </div>
-                </td>
+                <th>归属用户</th>
+                <th>标题</th>
+                <th>标记</th>
+                <th>AI</th>
+                <th>更新时间</th>
+                <th>正文内容</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredNotes.length ? (
+                filteredNotes.map((note) => {
+                  const owner = profileById.get(note.user_id);
+
+                  return (
+                    <tr key={note.id}>
+                      <td>{owner?.email ?? "未知用户"}</td>
+                      <td>
+                        <strong>{note.title}</strong>
+                        {note.source_url ? (
+                          <div>
+                            <a className="small-link" href={note.source_url} rel="noreferrer" target="_blank">
+                              来源链接
+                            </a>
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>{note.marker ? <span className="inline-badge">{note.marker}</span> : <span className="muted">无</span>}</td>
+                      <td>{getAiStatusLabel(note.ai_status)}</td>
+                      <td>{dateFormatter.format(new Date(note.updated_at))}</td>
+                      <td>
+                        <details>
+                          <summary>{previewText(note.content)}</summary>
+                          <p className="muted">{note.content}</p>
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="empty-state admin-empty-state">
+                      <div>
+                        <strong>没有匹配到筛选结果。</strong>
+                        <p>你可以切换用户、AI 状态，或者清空关键词重新查看全部笔记。</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

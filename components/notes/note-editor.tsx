@@ -60,81 +60,85 @@ export function NoteEditor({
         </div>
       </div>
 
-      <div className="field">
-        <label htmlFor="note-title">标题</label>
-        <input
-          id="note-title"
-          value={draft.title}
-          onChange={(event) => onChange("title", event.target.value)}
-          placeholder="给这篇文章起一个清楚的标题"
-        />
+      <div className="editor-scroll">
+        <div className="field">
+          <label htmlFor="note-title">标题</label>
+          <input
+            id="note-title"
+            value={draft.title}
+            onChange={(event) => onChange("title", event.target.value)}
+            placeholder="给这篇文章起一个清楚的标题"
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="note-source">来源链接</label>
+          <div className="import-row">
+            <input
+              id="note-source"
+              value={draft.source_url}
+              onChange={(event) => onChange("source_url", event.target.value)}
+              placeholder="https://example.com/article"
+            />
+            <button type="button" className="ghost-button" disabled={isImporting} onClick={onImportFromUrl}>
+              {isImporting ? "导入中..." : "导入链接"}
+            </button>
+          </div>
+          <p className="help-text">自动抓取标题和正文，抓不全的部分你仍然可以手动补充。</p>
+        </div>
+
+        <div className="field">
+          <label htmlFor="note-tag-input">标签</label>
+          <div className="tag-chip-row">
+            {draft.tags.length ? (
+              draft.tags.map((tag) => (
+                <button key={tag} type="button" className="tag-chip removable" onClick={() => removeTag(tag)}>
+                  <span>{tag}</span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              ))
+            ) : (
+              <span className="muted">还没有标签，输入后按回车或逗号添加。</span>
+            )}
+          </div>
+          <input
+            id="note-tag-input"
+            value={tagInput}
+            onChange={(event) => setTagInput(event.target.value)}
+            onBlur={() => commitTag(tagInput)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === "," || event.key === "，") {
+                event.preventDefault();
+                commitTag(tagInput);
+              }
+            }}
+            placeholder="输入标签后按回车、英文逗号或中文逗号"
+          />
+          <p className="help-text">支持一次性粘贴多个标签，例如：AI, 写作, 方法论。</p>
+        </div>
+
+        <div className="field note-content-field">
+          <label htmlFor="note-content">文章正文</label>
+          <textarea
+            id="note-content"
+            value={draft.content}
+            onChange={(event) => onChange("content", event.target.value)}
+            placeholder="把文章正文粘贴到这里，或者先通过链接自动导入"
+          />
+        </div>
       </div>
 
-      <div className="field">
-        <label htmlFor="note-source">来源链接</label>
-        <div className="import-row">
-          <input
-            id="note-source"
-            value={draft.source_url}
-            onChange={(event) => onChange("source_url", event.target.value)}
-            placeholder="https://example.com/article"
-          />
-          <button type="button" className="ghost-button" disabled={isImporting} onClick={onImportFromUrl}>
-            {isImporting ? "导入中..." : "导入链接"}
+      <div className="editor-footer">
+        {feedback ? <p className={`feedback${isError ? " error" : ""}`}>{feedback}</p> : null}
+
+        <div className="editor-actions">
+          <button type="button" className="button" disabled={isSaving} onClick={onSave}>
+            {isSaving ? "保存中..." : hasSavedNote ? "保存修改" : "保存笔记"}
+          </button>
+          <button type="button" className="danger-button" disabled={!hasSavedNote || isDeleting} onClick={onDelete}>
+            {isDeleting ? "删除中..." : "删除笔记"}
           </button>
         </div>
-        <p className="help-text">自动抓取标题和正文，抓不全的部分你仍然可以手动补充。</p>
-      </div>
-
-      <div className="field">
-        <label htmlFor="note-tag-input">标签</label>
-        <div className="tag-chip-row">
-          {draft.tags.length ? (
-            draft.tags.map((tag) => (
-              <button key={tag} type="button" className="tag-chip removable" onClick={() => removeTag(tag)}>
-                <span>{tag}</span>
-                <span aria-hidden="true">×</span>
-              </button>
-            ))
-          ) : (
-            <span className="muted">还没有标签，输入后按回车或逗号添加。</span>
-          )}
-        </div>
-        <input
-          id="note-tag-input"
-          value={tagInput}
-          onChange={(event) => setTagInput(event.target.value)}
-          onBlur={() => commitTag(tagInput)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === "," || event.key === "，") {
-              event.preventDefault();
-              commitTag(tagInput);
-            }
-          }}
-          placeholder="输入标签后按回车、英文逗号或中文逗号"
-        />
-        <p className="help-text">支持一次性粘贴多个标签，例如：AI, 写作, 方法论。</p>
-      </div>
-
-      <div className="field">
-        <label htmlFor="note-content">文章正文</label>
-        <textarea
-          id="note-content"
-          value={draft.content}
-          onChange={(event) => onChange("content", event.target.value)}
-          placeholder="把文章正文粘贴到这里，或者先通过链接自动导入"
-        />
-      </div>
-
-      {feedback ? <p className={`feedback${isError ? " error" : ""}`}>{feedback}</p> : null}
-
-      <div className="editor-actions">
-        <button type="button" className="button" disabled={isSaving} onClick={onSave}>
-          {isSaving ? "保存中..." : hasSavedNote ? "保存修改" : "保存笔记"}
-        </button>
-        <button type="button" className="danger-button" disabled={!hasSavedNote || isDeleting} onClick={onDelete}>
-          {isDeleting ? "删除中..." : "删除笔记"}
-        </button>
       </div>
     </section>
   );

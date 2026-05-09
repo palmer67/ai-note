@@ -112,7 +112,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
   }
 
   return (
-    <section className="panel">
+    <section className="panel ai-panel">
       <div className="panel-header">
         <div>
           <h2 className="panel-title">AI 阅读助手</h2>
@@ -130,89 +130,91 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
         </div>
       </div>
 
-      {!note ? (
-        <div className="empty-state">
-          <div>
-            <strong>请先保存一条笔记。</strong>
-            <p>AI 功能只会针对已保存的笔记执行，这样结果才能绑定到对应记录上。</p>
+      <div className="ai-panel-body">
+        {!note ? (
+          <div className="empty-state compact-empty-state">
+            <div>
+              <strong>请先保存一条笔记。</strong>
+              <p>AI 功能只会针对已保存的笔记执行，这样结果才能绑定到对应记录上。</p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="analysis-block">
-          {summary ? (
-            <>
-              <span className="status-badge">状态：{getAiStatusLabel(note.ai_status)}</span>
+        ) : (
+          <div className="analysis-block">
+            {summary ? (
+              <>
+                <span className="status-badge">状态：{getAiStatusLabel(note.ai_status)}</span>
 
-              <section className="analysis-section">
-                <h3>主题</h3>
-                <p>{summary.topic}</p>
-              </section>
+                <section className="analysis-section">
+                  <h3>主题</h3>
+                  <p>{summary.topic}</p>
+                </section>
 
-              <section className="analysis-section">
-                <h3>核心观点</h3>
-                <p>{summary.coreArgument}</p>
-              </section>
+                <section className="analysis-section">
+                  <h3>核心观点</h3>
+                  <p>{summary.coreArgument}</p>
+                </section>
 
-              <section className="analysis-section">
-                <h3>关键论据</h3>
-                <ul className="analysis-list">
-                  {summary.supportingEvidence.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </section>
+                <section className="analysis-section">
+                  <h3>关键论据</h3>
+                  <ul className="analysis-list">
+                    {summary.supportingEvidence.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </section>
 
-              <section className="analysis-section">
-                <h3>适用场景</h3>
-                <ul className="analysis-list">
-                  {summary.bestFitScenarios.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </section>
+                <section className="analysis-section">
+                  <h3>适用场景</h3>
+                  <ul className="analysis-list">
+                    {summary.bestFitScenarios.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </section>
 
-              <section className="analysis-section">
-                <h3>我的启发</h3>
-                <ul className="analysis-list">
-                  {summary.takeaways.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </section>
-            </>
-          ) : (
-            <div className="empty-state">
-              <div>
-                <strong>还没有 AI 分析结果。</strong>
-                <p>保存好文章后，点击上方按钮就能生成结构化阅读卡片。</p>
+                <section className="analysis-section">
+                  <h3>我的启发</h3>
+                  <ul className="analysis-list">
+                    {summary.takeaways.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            ) : (
+              <div className="empty-state compact-empty-state">
+                <div>
+                  <strong>还没有 AI 分析结果。</strong>
+                  <p>保存好文章后，点击上方按钮就能生成结构化阅读卡片。</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <section className="analysis-section">
-            <h3>问这篇笔记</h3>
-            <div className="field">
-              <textarea
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                placeholder="例如：这篇文章最适合什么场景？作者真正想表达的重点是什么？"
-              />
-            </div>
-            <div className="editor-actions">
-              <button type="button" className="button secondary" disabled={!question.trim() || askPending} onClick={handleAsk}>
-                {askPending ? "回答中..." : "开始问答"}
-              </button>
-            </div>
-            {askError ? <p className="feedback error">{askError}</p> : null}
-            {answer ? (
-              <div className="analysis-answer-card">
-                <h4>回答</h4>
-                <p className="analysis-answer">{answer}</p>
+            <section className="analysis-section">
+              <h3>问这篇笔记</h3>
+              <div className="field ai-question-field">
+                <textarea
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  placeholder="例如：这篇文章最适合什么场景？作者真正想表达的重点是什么？"
+                />
               </div>
-            ) : null}
-          </section>
-        </div>
-      )}
+              <div className="editor-actions">
+                <button type="button" className="button secondary" disabled={!question.trim() || askPending} onClick={handleAsk}>
+                  {askPending ? "回答中..." : "开始问答"}
+                </button>
+              </div>
+              {askError ? <p className="feedback error">{askError}</p> : null}
+              {answer ? (
+                <div className="analysis-answer-card">
+                  <h4>回答</h4>
+                  <p className="analysis-answer">{answer}</p>
+                </div>
+              ) : null}
+            </section>
+          </div>
+        )}
+      </div>
 
       {copyFeedback ? <p className={`feedback${copyFeedback.includes("失败") ? " error" : ""}`}>{copyFeedback}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}

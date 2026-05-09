@@ -1,11 +1,29 @@
 import { lookup } from "node:dns/promises";
+import { existsSync } from "node:fs";
 import { isIP } from "node:net";
+
+import { Readability } from "@mozilla/readability";
+import { JSDOM } from "jsdom";
+import { chromium } from "playwright-core";
 
 interface ImportedArticle {
   title: string;
   sourceUrl: string;
   content: string;
   extractionMode: "article" | "fallback";
+}
+
+interface ExtractionCandidate {
+  source: "readability" | "jsonld" | "selector" | "structured" | "fallback";
+  content: string;
+  extractionMode: ImportedArticle["extractionMode"];
+  score: number;
+}
+
+interface JsonLdArticleData {
+  title: string;
+  articleBody: string;
+  description: string;
 }
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -27,6 +45,39 @@ const STOP_PATTERNS = [
   "联系我们"
 ];
 
+const CONTENT_ROOT_SELECTORS = [
+  "article",
+  "main article",
+  "main",
+  "[itemprop='articleBody']",
+  ".article-content",
+  ".article__content",
+  ".post-content",
+  ".post-body",
+  ".entry-content",
+  ".entry-body",
+  ".markdown-body",
+  ".rich-text",
+  ".content-article",
+  ".content__article",
+  ".story-body",
+  ".article-body"
+];
+
+const COMMON_BROWSER_PATHS = [
+  process.env.BROWSER_EXECUTABLE_PATH,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+  "/snap/bin/chromium"
+].filter(Boolean) as string[];
+
 const MAX_REDIRECTS = 5;
 
 function decodeHtmlEntities(value: string) {
@@ -41,25 +92,51 @@ function decodeHtmlEntities(value: string) {
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(Number.parseInt(code, 16)));
 }
 
+function collapseInlineWhitespace(value: string) {
+  return decodeHtmlEntities(value).replace(/\s+/g, " ").trim();
+}
+
 function cleanText(value: string) {
-  return decodeHtmlEntities(value)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return collapseInlineWhitespace(value.replace(/<[^>]+>/g, " "));
+}
+
+function normalizeBlockText(value: string) {
+  const lines = decodeHtmlEntities(value)
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .map((line) => line.replace(/\s+/g, " "))
+    .filter(Boolean);
+
+  const dedupedLines: string[] = [];
+
+  for (const line of lines) {
+    if (dedupedLines.at(-1) !== line) {
+      dedupedLines.push(line);
+    }
+  }
+
+  return dedupedLines.join("\n\n").trim();
+}
+
+function htmlToStructuredText(html: string) {
+  return normalizeBlockText(
+    html
+      .replace(/<(br|\/p|\/div|\/section|\/article|\/li|\/ul|\/ol|\/blockquote|\/h[1-6])\b[^>]*>/gi, "\n")
+      .replace(/<li\b[^>]*>/gi, "\n- ")
+      .replace(/<blockquote\b[^>]*>/gi, "\n> ")
+      .replace(/<h[1-6]\b[^>]*>/gi, "\n## ")
+      .replace(/<[^>]+>/g, " ")
+  );
 }
 
 function stripDangerousBlocks(html: string) {
   return html
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<script\b(?![^>]*application\/ld\+json)[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
     .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, " ")
-    .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, " ")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, " ")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
-    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside>/gi, " ")
     .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, " ");
 }
 
@@ -114,7 +191,7 @@ function extractStructuredBlocks(html: string) {
     }
 
     if (tagName.startsWith("h")) {
-      if (text.length >= 2 && text.length <= 80) {
+      if (text.length >= 2 && text.length <= 120) {
         blocks.push(`## ${text}`);
       }
       continue;
@@ -134,7 +211,7 @@ function extractStructuredBlocks(html: string) {
       continue;
     }
 
-    if (text.length >= 20) {
+    if (text.length >= 14) {
       blocks.push(text);
     }
   }
@@ -185,14 +262,48 @@ function chooseBestContentRoot(html: string) {
 }
 
 function extractReadableBody(html: string) {
-  return html
-    .replace(/<(br|\/p|\/div|\/section|\/article|\/li|\/ul|\/ol|\/h[1-6])\b[^>]*>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .split("\n")
-    .map((line) => cleanText(line))
+  return normalizeBlockText(
+    html
+      .replace(/<(br|\/p|\/div|\/section|\/article|\/li|\/ul|\/ol|\/h[1-6])\b[^>]*>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .split("\n\n")
     .filter((line) => line.length >= 16)
     .slice(0, 120)
     .join("\n\n");
+}
+
+function countMeaningfulBlocks(content: string) {
+  return content
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length >= 20).length;
+}
+
+function scoreCandidateContent(content: string) {
+  const blockCount = countMeaningfulBlocks(content);
+  const headingCount = (content.match(/^## /gm) ?? []).length;
+
+  return content.length + blockCount * 90 + headingCount * 60;
+}
+
+function buildCandidate(
+  source: ExtractionCandidate["source"],
+  rawContent: string,
+  extractionMode: ImportedArticle["extractionMode"]
+) {
+  const content = normalizeBlockText(rawContent);
+
+  if (!content) {
+    return null;
+  }
+
+  return {
+    source,
+    content,
+    extractionMode,
+    score: scoreCandidateContent(content)
+  } satisfies ExtractionCandidate;
 }
 
 function isPrivateIpv4(address: string) {
@@ -235,6 +346,250 @@ function isPrivateAddress(address: string) {
   }
 
   return false;
+}
+
+function flattenJsonLdNodes(input: unknown): Record<string, unknown>[] {
+  if (!input) {
+    return [];
+  }
+
+  if (Array.isArray(input)) {
+    return input.flatMap((item) => flattenJsonLdNodes(item));
+  }
+
+  if (typeof input !== "object") {
+    return [];
+  }
+
+  const node = input as Record<string, unknown>;
+  const graph = node["@graph"];
+
+  return [node, ...flattenJsonLdNodes(graph)];
+}
+
+function matchesArticleType(node: Record<string, unknown>) {
+  const rawType = node["@type"];
+  const types = Array.isArray(rawType) ? rawType : [rawType];
+
+  return types.some((type) => {
+    if (typeof type !== "string") {
+      return false;
+    }
+
+    return ["article", "newsarticle", "blogposting", "report", "techarticle"].includes(type.toLowerCase());
+  });
+}
+
+function extractJsonLdArticleData(html: string): JsonLdArticleData {
+  const scriptMatches = [
+    ...html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+  ];
+
+  let bestArticleBody = "";
+  let bestTitle = "";
+  let bestDescription = "";
+
+  for (const match of scriptMatches) {
+    const rawJson = (match[1] ?? "").trim();
+
+    if (!rawJson) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(rawJson) as unknown;
+      const nodes = flattenJsonLdNodes(parsed);
+
+      for (const node of nodes) {
+        if (!matchesArticleType(node)) {
+          continue;
+        }
+
+        const articleBody = typeof node.articleBody === "string" ? normalizeBlockText(node.articleBody) : "";
+        const title =
+          typeof node.headline === "string"
+            ? collapseInlineWhitespace(node.headline)
+            : typeof node.name === "string"
+              ? collapseInlineWhitespace(node.name)
+              : "";
+        const description = typeof node.description === "string" ? normalizeBlockText(node.description) : "";
+
+        if (articleBody.length > bestArticleBody.length) {
+          bestArticleBody = articleBody;
+        }
+
+        if (!bestTitle && title) {
+          bestTitle = title;
+        }
+
+        if (description.length > bestDescription.length) {
+          bestDescription = description;
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    title: bestTitle,
+    articleBody: bestArticleBody,
+    description: bestDescription
+  };
+}
+
+function extractReadabilityCandidate(html: string, url: string) {
+  try {
+    const dom = new JSDOM(html, { url });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+
+    if (!article) {
+      return { title: "", content: "" };
+    }
+
+    return {
+      title: collapseInlineWhitespace(article.title ?? ""),
+      content: htmlToStructuredText(article.content ?? "")
+    };
+  } catch {
+    return { title: "", content: "" };
+  }
+}
+
+function extractSelectorCandidate(html: string, url: string) {
+  try {
+    const dom = new JSDOM(html, { url });
+    const { document } = dom.window;
+    let bestContent = "";
+
+    for (const selector of CONTENT_ROOT_SELECTORS) {
+      const nodes = [...document.querySelectorAll(selector)];
+
+      for (const node of nodes) {
+        const candidate = htmlToStructuredText(node.innerHTML);
+
+        if (candidate.length > bestContent.length) {
+          bestContent = candidate;
+        }
+      }
+    }
+
+    return bestContent;
+  } catch {
+    return "";
+  }
+}
+
+function looksLikeChallengePage(html: string) {
+  const normalized = html.toLowerCase();
+
+  return (
+    normalized.includes("waf_jschallenge") ||
+    normalized.includes("_wafchallengeid") ||
+    normalized.includes("window.wafjs") ||
+    normalized.includes("please wait") ||
+    normalized.includes("captcha")
+  );
+}
+
+function getBrowserExecutablePath() {
+  return COMMON_BROWSER_PATHS.find((path) => existsSync(path)) ?? null;
+}
+
+async function fetchRenderedHtml(url: string) {
+  const executablePath = getBrowserExecutablePath();
+
+  if (!executablePath) {
+    throw new Error("当前环境没有可用浏览器，无法执行增强导入。");
+  }
+
+  const browser = await chromium.launch({
+    executablePath,
+    headless: true
+  });
+
+  try {
+    const page = await browser.newPage({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+    });
+
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000
+    });
+
+    try {
+      await page.waitForLoadState("networkidle", { timeout: 8000 });
+    } catch {
+      // Some pages keep long connections open; a settled DOM is enough here.
+    }
+
+    try {
+      await page.waitForFunction(
+        () => {
+          const text = document.body?.innerText ?? "";
+
+          return text.length > 800 && !text.includes("Please wait");
+        },
+        { timeout: 12000 }
+      );
+    } catch {
+      // We'll still inspect whatever DOM is available below.
+    }
+
+    return {
+      html: await page.content(),
+      finalUrl: page.url()
+    };
+  } finally {
+    await browser.close();
+  }
+}
+
+function extractArticleFromHtml(rawHtml: string, finalUrl: string): ImportedArticle {
+  const html = stripDangerousBlocks(rawHtml);
+  const jsonLdData = extractJsonLdArticleData(rawHtml);
+  const readabilityData = extractReadabilityCandidate(html, finalUrl);
+  const selectorContent = extractSelectorCandidate(html, finalUrl);
+
+  const contentRootHtml = chooseBestContentRoot(html);
+  const structuredContent = trimAfterContentTail(extractStructuredBlocks(contentRootHtml)).join("\n\n");
+  const fallbackContent =
+    extractReadableBody(contentRootHtml) ||
+    jsonLdData.description ||
+    extractMetaContent(html, "description") ||
+    extractMetaContent(html, "og:description");
+
+  const candidates = [
+    buildCandidate("readability", readabilityData.content, "article"),
+    buildCandidate("jsonld", jsonLdData.articleBody, "article"),
+    buildCandidate("selector", selectorContent, "article"),
+    buildCandidate("structured", structuredContent, "article"),
+    buildCandidate("fallback", fallbackContent, "fallback")
+  ].filter((candidate): candidate is ExtractionCandidate => Boolean(candidate));
+
+  const bestCandidate = [...candidates].sort((left, right) => right.score - left.score)[0];
+
+  if (!bestCandidate || bestCandidate.content.length < 80) {
+    throw new Error("自动抓取到的正文太少了，这个网页可能不适合当前导入方式。");
+  }
+
+  const title =
+    readabilityData.title ||
+    jsonLdData.title ||
+    extractMetaContent(html, "og:title") ||
+    cleanText(extractTagContent(html, "title")) ||
+    cleanText(extractTagContent(html, "h1")) ||
+    "未命名文章";
+
+  return {
+    title,
+    sourceUrl: finalUrl,
+    content: bestCandidate.content,
+    extractionMode: bestCandidate.extractionMode
+  };
 }
 
 async function assertSafeRemoteUrl(input: string) {
@@ -334,36 +689,16 @@ export async function importArticleFromUrl(inputUrl: string): Promise<ImportedAr
   }
 
   const rawHtml = (await response.text()).slice(0, 2_000_000);
-  const html = stripDangerousBlocks(rawHtml);
 
-  const title =
-    extractMetaContent(html, "og:title") ||
-    cleanText(extractTagContent(html, "title")) ||
-    cleanText(extractTagContent(html, "h1")) ||
-    "未命名文章";
-
-  const contentRootHtml = chooseBestContentRoot(html);
-  const contentBlocks = trimAfterContentTail(extractStructuredBlocks(contentRootHtml));
-
-  let content = contentBlocks.join("\n\n");
-  let extractionMode: ImportedArticle["extractionMode"] = "article";
-
-  if (content.length < 280) {
-    extractionMode = "fallback";
-    content =
-      extractReadableBody(contentRootHtml) ||
-      extractMetaContent(html, "description") ||
-      extractMetaContent(html, "og:description");
+  if (!looksLikeChallengePage(rawHtml)) {
+    try {
+      return extractArticleFromHtml(rawHtml, finalUrl);
+    } catch {
+      // Fall through to browser rendering when static extraction still comes up short.
+    }
   }
 
-  if (!content || content.length < 80) {
-    throw new Error("自动抓取到的正文太少了，这个网页可能不适合当前导入方式。");
-  }
+  const rendered = await fetchRenderedHtml(finalUrl);
 
-  return {
-    title,
-    sourceUrl: finalUrl,
-    content,
-    extractionMode
-  };
+  return extractArticleFromHtml(rendered.html.slice(0, 2_000_000), rendered.finalUrl);
 }

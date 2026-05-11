@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { NotesList } from "@/components/notes/notes-list";
 import { canExportAiAnalysis, downloadBatchAiAnalysisZip } from "@/lib/exports/ai-analysis";
+import {
+  getNoteLifecycleLabel,
+  noteLifecycleViewOptions,
+  type NoteLifecycleView
+} from "@/lib/note-lifecycle";
 import { createClient } from "@/lib/supabase/client";
 import { parseTags, serializeTags } from "@/lib/tags";
-import type { Note, NoteDraft, Profile } from "@/lib/types";
+import type { Note, NoteDraft, NoteLifecycleStatus, Profile } from "@/lib/types";
 
 interface NotesWorkspaceProps {
   currentProfile: Profile;
@@ -58,12 +63,18 @@ function matchesSearch(note: Note, query: string) {
   return [note.title, tags, note.content].some((value) => value.toLowerCase().includes(normalized));
 }
 
-function getFilteredNotes(notes: Note[], query: string, tag: string | null) {
+function getFilteredNotes(
+  notes: Note[],
+  query: string,
+  tag: string | null,
+  lifecycleView: NoteLifecycleView
+) {
   return notes.filter((note) => {
     const matchesKeywordSearch = matchesSearch(note, query);
     const matchesTagFilter = tag ? parseTags(note.marker).includes(tag) : true;
+    const matchesLifecycleView = lifecycleView === "all" || note.lifecycle_status === lifecycleView;
 
-    return matchesKeywordSearch && matchesTagFilter;
+    return matchesKeywordSearch && matchesTagFilter && matchesLifecycleView;
   });
 }
 
@@ -74,6 +85,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [draft, setDraft] = useState<NoteDraft>(() => toDraft(initialNotes[0] ?? null));
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeLifecycleView, setActiveLifecycleView] = useState<NoteLifecycleView>("all");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [batchMode, setBatchMode] = useState(false);
@@ -90,20 +102,34 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     left.localeCompare(right, "zh-CN")
   );
   const analyzedCount = notes.filter((note) => note.ai_status === "done").length;
-  const filteredNotes = getFilteredNotes(notes, search, activeTag);
+  const filteredNotes = getFilteredNotes(notes, search, activeTag, activeLifecycleView);
+  const lifecycleCounts = useMemo(
+    () => ({
+      all: notes.length,
+      inbox: notes.filter((note) => note.lifecycle_status === "inbox").length,
+      distilled: notes.filter((note) => note.lifecycle_status === "distilled").length,
+      archived: notes.filter((note) => note.lifecycle_status === "archived").length
+    }),
+    [notes]
+  );
 
   const exportableFilteredNotes = filteredNotes.filter((note) => canExportAiAnalysis(note));
   const visibleSelectedExportIds = selectedExportIds.filter((id) =>
     exportableFilteredNotes.some((note) => note.id === id)
   );
 
-  function pruneSelectedExports(nextNotes: Note[], nextSearch: string, nextTag: string | null) {
+  function pruneSelectedExports(
+    nextNotes: Note[],
+    nextSearch: string,
+    nextTag: string | null,
+    nextLifecycleView: NoteLifecycleView
+  ) {
     if (!batchMode) {
       return;
     }
 
     const visibleExportIds = new Set(
-      getFilteredNotes(nextNotes, nextSearch, nextTag)
+      getFilteredNotes(nextNotes, nextSearch, nextTag, nextLifecycleView)
         .filter((note) => canExportAiAnalysis(note))
         .map((note) => note.id)
     );
@@ -147,6 +173,16 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     }));
   }
 
+  function updateSelectedNoteLifecycleStatus(status: NoteLifecycleStatus) {
+    if (!selectedId) {
+      return;
+    }
+
+    setNotes((current) => current.map((note) => (note.id === selectedId ? { ...note, lifecycle_status: status } : note)));
+    setFeedback(null);
+    setAnalysisError(null);
+  }
+
   function handleSave() {
     setFeedback(null);
     setAnalysisError(null);
@@ -166,7 +202,8 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             title: draft.title.trim(),
             source_url: draft.source_url.trim() || null,
             marker,
-            content: draft.content.trim()
+            content: draft.content.trim(),
+            lifecycle_status: selectedNote?.lifecycle_status ?? "inbox"
           })
           .eq("id", selectedId)
           .select("*")
@@ -181,7 +218,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         const nextNotes = sortNotes(notes.map((note) => (note.id === savedNote.id ? savedNote : note)));
 
         setNotes(nextNotes);
-        pruneSelectedExports(nextNotes, search, activeTag);
+        pruneSelectedExports(nextNotes, search, activeTag, activeLifecycleView);
         setDraft(toDraft(savedNote));
         setFeedback("笔记已保存。现有 AI 分析会保留；如果你想基于新内容更新分析，可以手动重新运行。");
         return;
@@ -194,7 +231,8 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           title: draft.title.trim(),
           source_url: draft.source_url.trim() || null,
           marker,
-          content: draft.content.trim()
+          content: draft.content.trim(),
+          lifecycle_status: "inbox"
         })
         .select("*")
         .single();
@@ -208,7 +246,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       const nextNotes = sortNotes([savedNote, ...notes]);
 
       setNotes(nextNotes);
-      pruneSelectedExports(nextNotes, search, activeTag);
+      pruneSelectedExports(nextNotes, search, activeTag, activeLifecycleView);
       setSelectedId(savedNote.id);
       setDraft(toDraft(savedNote));
       setFeedback("笔记已保存。现在可以在右侧发起 AI 分析。");
@@ -241,7 +279,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       const nextSelected = remaining[0] ?? null;
 
       setNotes(remaining);
-      pruneSelectedExports(remaining, search, activeTag);
+      pruneSelectedExports(remaining, search, activeTag, activeLifecycleView);
       setSelectedId(nextSelected?.id ?? null);
       setDraft(toDraft(nextSelected));
       setFeedback("笔记已删除。");
@@ -328,7 +366,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       const nextNotes = sortNotes(notes.map((note) => (note.id === payload.note?.id ? payload.note : note)));
 
       setNotes(nextNotes);
-      pruneSelectedExports(nextNotes, search, activeTag);
+      pruneSelectedExports(nextNotes, search, activeTag, activeLifecycleView);
       setFeedback("AI 分析结果已保存到当前笔记。");
     });
   }
@@ -402,11 +440,22 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             <span className={`role-pill ${currentProfile.role}`}>{currentProfile.email}</span>
           </div>
         </div>
+
         <div className="workspace-summary-strip">
-          <article className="summary-chip">
-            <strong>{notes.length}</strong>
-            <span>已保存文章</span>
-          </article>
+          {noteLifecycleViewOptions.map((view) => (
+            <button
+              key={view.value}
+              type="button"
+              className={`summary-chip summary-chip-button${activeLifecycleView === view.value ? " active" : ""}`}
+              onClick={() => {
+                setActiveLifecycleView(view.value);
+                pruneSelectedExports(notes, search, activeTag, view.value);
+              }}
+            >
+              <strong>{lifecycleCounts[view.value]}</strong>
+              <span>{view.label}</span>
+            </button>
+          ))}
           <article className="summary-chip">
             <strong>{availableTags.length}</strong>
             <span>常用标签</span>
@@ -416,7 +465,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             <span>已完成 AI 分析</span>
           </article>
           <article className="summary-chip summary-chip-wide">
-            <strong>{selectedNote ? "进行中" : "未选择"}</strong>
+            <strong>{selectedNote ? getNoteLifecycleLabel(selectedNote.lifecycle_status) : "未选择"}</strong>
             <span>{selectedNote ? selectedNote.title : "选择一篇文章开始工作"}</span>
           </article>
         </div>
@@ -436,13 +485,13 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           batchExportPending={batchExportPending}
           onSearchChange={(value) => {
             setSearch(value);
-            pruneSelectedExports(notes, value, activeTag);
+            pruneSelectedExports(notes, value, activeTag, activeLifecycleView);
           }}
           onCreateNew={createNewNote}
           onSelect={selectNote}
           onTagFilterChange={(value) => {
             setActiveTag(value);
-            pruneSelectedExports(notes, search, value);
+            pruneSelectedExports(notes, search, value, activeLifecycleView);
           }}
           onEnterBatchMode={handleEnterBatchMode}
           onExitBatchMode={handleExitBatchMode}
@@ -455,11 +504,13 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
         <NoteEditor
           draft={draft}
           hasSavedNote={Boolean(selectedId)}
+          lifecycleStatus={selectedNote?.lifecycle_status ?? "inbox"}
           isSaving={savePending}
           isDeleting={deletePending}
           isImporting={importPending}
           feedback={feedback}
           onChange={updateDraft}
+          onLifecycleStatusChange={updateSelectedNoteLifecycleStatus}
           onTagsChange={updateTags}
           onSave={handleSave}
           onDelete={handleDelete}

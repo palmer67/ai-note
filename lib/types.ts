@@ -1,6 +1,7 @@
 export type AppRole = "admin" | "user";
 
 export type AiStatus = "idle" | "loading" | "done" | "error";
+export type NoteLifecycleStatus = "inbox" | "distilled" | "archived";
 
 export interface ArticleBreakdown {
   topic: string;
@@ -28,6 +29,7 @@ export interface Note {
   content: string;
   ai_summary: ArticleBreakdown | null;
   ai_status: AiStatus;
+  lifecycle_status: NoteLifecycleStatus;
   created_at: string;
   updated_at: string;
 }

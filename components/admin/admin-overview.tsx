@@ -1,10 +1,11 @@
 "use client";
 
-import { useDeferredValue, useState, useTransition } from "react";
+import { useDeferredValue, useMemo, useState, useTransition } from "react";
 
 import { canExportAiAnalysis, downloadBatchAiAnalysisZip } from "@/lib/exports/ai-analysis";
+import { getNoteLifecycleLabel, noteLifecycleOptions } from "@/lib/note-lifecycle";
 import { parseTags } from "@/lib/tags";
-import type { AiStatus, AppRole, Note, Profile } from "@/lib/types";
+import type { AiStatus, AppRole, Note, NoteLifecycleStatus, Profile } from "@/lib/types";
 
 interface AdminOverviewProps {
   currentAdminId: string;
@@ -66,6 +67,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
   const [exportPending, startExport] = useTransition();
   const [selectedUserId, setSelectedUserId] = useState("all");
   const [selectedAiStatus, setSelectedAiStatus] = useState<"all" | AiStatus>("all");
+  const [selectedLifecycleStatus, setSelectedLifecycleStatus] = useState<"all" | NoteLifecycleStatus>("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [markerKeyword, setMarkerKeyword] = useState("");
   const deferredMarkerKeyword = useDeferredValue(markerKeyword);
@@ -75,11 +77,13 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
 
   const scopedNotes = notes.filter((note) => {
     const matchesUser = selectedUserId === "all" || note.user_id === selectedUserId;
-    const matchesStatus = selectedAiStatus === "all" || note.ai_status === selectedAiStatus;
+    const matchesAiStatus = selectedAiStatus === "all" || note.ai_status === selectedAiStatus;
+    const matchesLifecycle = selectedLifecycleStatus === "all" || note.lifecycle_status === selectedLifecycleStatus;
     const matchesMarker = matchesKeyword(note, deferredMarkerKeyword);
 
-    return matchesUser && matchesStatus && matchesMarker;
+    return matchesUser && matchesAiStatus && matchesLifecycle && matchesMarker;
   });
+
   const availableTags = Array.from(new Set(scopedNotes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
     left.localeCompare(right, "zh-CN")
   );
@@ -88,6 +92,14 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
     effectiveActiveTag ? parseTags(note.marker).includes(effectiveActiveTag) : true
   );
   const exportableFilteredNotes = filteredNotes.filter((note) => canExportAiAnalysis(note));
+  const lifecycleCounts = useMemo(
+    () => ({
+      inbox: notes.filter((note) => note.lifecycle_status === "inbox").length,
+      distilled: notes.filter((note) => note.lifecycle_status === "distilled").length,
+      archived: notes.filter((note) => note.lifecycle_status === "archived").length
+    }),
+    [notes]
+  );
 
   function handleRoleToggle(targetProfile: Profile) {
     const nextRole: AppRole = targetProfile.role === "admin" ? "user" : "admin";
@@ -174,6 +186,18 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
             <strong>{notes.length}</strong>
             <span>已保存文章数</span>
           </article>
+          <article className="summary-chip">
+            <strong>{lifecycleCounts.inbox}</strong>
+            <span>待整理</span>
+          </article>
+          <article className="summary-chip">
+            <strong>{lifecycleCounts.distilled}</strong>
+            <span>已提炼</span>
+          </article>
+          <article className="summary-chip">
+            <strong>{lifecycleCounts.archived}</strong>
+            <span>已归档</span>
+          </article>
         </div>
         {feedback ? <p className={`feedback${feedback.includes("失败") || feedback.includes("错误") ? " error" : ""}`}>{feedback}</p> : null}
       </div>
@@ -243,7 +267,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
           <div>
             <h2 className="panel-title">全部笔记</h2>
             <p className="panel-subtitle">
-              按用户、AI 状态、标签和关键词筛选全局笔记，并可直接导出当前筛选结果。
+              按用户、AI 状态、知识状态、标签和关键词筛选全局笔记，并可直接导出当前筛选结果。
             </p>
           </div>
           <div className="admin-notes-header-actions">
@@ -260,7 +284,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
         </div>
 
         <div className="admin-filter-stack">
-          <div className="admin-filters">
+          <div className="admin-filters admin-filters-four">
             <div className="field">
               <label htmlFor="admin-user-filter">按用户筛选</label>
               <select
@@ -291,6 +315,23 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 <option value="loading">分析中</option>
                 <option value="done">已完成</option>
                 <option value="error">失败</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="admin-lifecycle-filter">按知识状态筛选</label>
+              <select
+                id="admin-lifecycle-filter"
+                className="admin-select"
+                value={selectedLifecycleStatus}
+                onChange={(event) => setSelectedLifecycleStatus(event.target.value as "all" | NoteLifecycleStatus)}
+              >
+                <option value="all">全部状态</option>
+                {noteLifecycleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -343,6 +384,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 <th>标题</th>
                 <th>标签</th>
                 <th>AI</th>
+                <th>知识状态</th>
                 <th>更新时间</th>
                 <th>正文内容</th>
               </tr>
@@ -380,6 +422,11 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                         )}
                       </td>
                       <td>{getAiStatusLabel(note.ai_status)}</td>
+                      <td>
+                        <span className={`status-badge lifecycle-badge lifecycle-${note.lifecycle_status}`}>
+                          {getNoteLifecycleLabel(note.lifecycle_status)}
+                        </span>
+                      </td>
                       <td>{dateFormatter.format(new Date(note.updated_at))}</td>
                       <td>
                         <details>
@@ -392,11 +439,11 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 })
               ) : (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <div className="empty-state admin-empty-state">
                       <div>
                         <strong>没有匹配到筛选结果。</strong>
-                        <p>你可以切换用户、AI 状态，或者清空关键词重新查看全部笔记。</p>
+                        <p>你可以切换用户、AI 状态、知识状态，或者清空关键词重新查看全部笔记。</p>
                       </div>
                     </div>
                   </td>

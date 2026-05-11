@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 
+import { getNoteLifecycleLabel, noteLifecycleOptions } from "@/lib/note-lifecycle";
 import { parseTags } from "@/lib/tags";
-import type { NoteDraft } from "@/lib/types";
+import type { NoteDraft, NoteLifecycleStatus } from "@/lib/types";
 
 interface NoteEditorProps {
   draft: NoteDraft;
   hasSavedNote: boolean;
+  lifecycleStatus: NoteLifecycleStatus;
   isSaving: boolean;
   isDeleting: boolean;
   isImporting: boolean;
   feedback: string | null;
   onChange: (field: "title" | "source_url" | "content", value: string) => void;
+  onLifecycleStatusChange: (status: NoteLifecycleStatus) => void;
   onTagsChange: (tags: string[]) => void;
   onSave: () => void;
   onDelete: () => void;
@@ -22,11 +25,13 @@ interface NoteEditorProps {
 export function NoteEditor({
   draft,
   hasSavedNote,
+  lifecycleStatus,
   isSaving,
   isDeleting,
   isImporting,
   feedback,
   onChange,
+  onLifecycleStatusChange,
   onTagsChange,
   onSave,
   onDelete,
@@ -57,6 +62,22 @@ export function NoteEditor({
         <div>
           <h2 className="panel-title">{hasSavedNote ? "编辑笔记" : "新建笔记"}</h2>
           <p className="panel-subtitle">先把文章内容保存下来。改了正文后，你可以随时重新生成一版 AI 分析。</p>
+        </div>
+        <div className="editor-lifecycle">
+          <label htmlFor="note-lifecycle-status">当前状态</label>
+          <select
+            id="note-lifecycle-status"
+            className="admin-select"
+            value={lifecycleStatus}
+            onChange={(event) => onLifecycleStatusChange(event.target.value as NoteLifecycleStatus)}
+          >
+            {noteLifecycleOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span className="inline-badge">{getNoteLifecycleLabel(lifecycleStatus)}</span>
         </div>
       </div>
 

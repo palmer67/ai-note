@@ -1,4 +1,5 @@
 import { canExportAiAnalysis } from "@/lib/exports/ai-analysis";
+import { getNoteLifecycleLabel } from "@/lib/note-lifecycle";
 import { parseTags } from "@/lib/tags";
 import type { Note } from "@/lib/types";
 
@@ -185,6 +186,13 @@ export function NotesList({
                   </div>
                 ) : null}
 
+                <div className="note-row-topline">
+                  <span className={`status-badge lifecycle-badge lifecycle-${note.lifecycle_status}`}>
+                    {getNoteLifecycleLabel(note.lifecycle_status)}
+                  </span>
+                  <span className="note-row-date">{dateFormatter.format(new Date(note.updated_at))}</span>
+                </div>
+
                 <div className="note-row-title">{note.title}</div>
 
                 <div className="note-row-meta">
@@ -196,8 +204,9 @@ export function NotesList({
                         </span>
                       ))}
                     </div>
-                  ) : null}
-                  <span className="note-row-date">{dateFormatter.format(new Date(note.updated_at))}</span>
+                  ) : (
+                    <span className="muted">无标签</span>
+                  )}
                 </div>
 
                 {batchMode && !exportable ? <span className="note-row-export-hint">这篇笔记还没有 AI 分析结果</span> : null}

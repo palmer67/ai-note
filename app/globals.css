@@ -787,6 +787,27 @@ button {
   box-shadow: none;
 }
 
+.summary-chip-button {
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.summary-chip-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(73, 51, 34, 0.18);
+}
+
+.summary-chip-button.active {
+  border-color: rgba(161, 61, 45, 0.26);
+  background: rgba(161, 61, 45, 0.12);
+  box-shadow: 0 12px 24px rgba(161, 61, 45, 0.08);
+}
+
 .summary-chip strong {
   font-family: var(--font-display), serif;
   font-size: 1.1rem;
@@ -982,6 +1003,16 @@ button {
   line-height: 1.45;
 }
 
+.note-row-topline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .note-row-meta {
   position: relative;
   z-index: 1;
@@ -1004,7 +1035,6 @@ button {
 }
 
 .note-row-date {
-  margin-left: auto;
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid rgba(73, 51, 34, 0.08);
@@ -1013,6 +1043,30 @@ button {
   font-size: 0.77rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.lifecycle-badge {
+  background: rgba(255, 250, 242, 0.84);
+  border-color: rgba(73, 51, 34, 0.12);
+  color: var(--ink-soft);
+}
+
+.lifecycle-inbox {
+  background: rgba(176, 122, 63, 0.12);
+  border-color: rgba(176, 122, 63, 0.2);
+  color: #8b5a22;
+}
+
+.lifecycle-distilled {
+  background: rgba(94, 106, 79, 0.12);
+  border-color: rgba(94, 106, 79, 0.2);
+  color: #46503a;
+}
+
+.lifecycle-archived {
+  background: rgba(78, 116, 118, 0.12);
+  border-color: rgba(78, 116, 118, 0.2);
+  color: #35595a;
 }
 
 .note-row-export-hint {
@@ -1043,6 +1097,17 @@ button {
 
 .editor-card .panel-header {
   margin-bottom: 14px;
+}
+
+.editor-lifecycle {
+  display: grid;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.editor-lifecycle label {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
 }
 
 .ai-panel .panel-header {
@@ -1317,6 +1382,10 @@ button {
   gap: 14px;
 }
 
+.admin-filters-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .admin-tag-section {
   display: grid;
   gap: 10px;
@@ -1451,6 +1520,10 @@ button {
   }
 
   .admin-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-filters-four {
     grid-template-columns: 1fr;
   }
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
 export function SignOutButton() {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const [pending, startTransition] = useTransition();
 
@@ -18,7 +19,9 @@ export function SignOutButton() {
       onClick={() => {
         startTransition(async () => {
           await supabase.auth.signOut();
-          router.push("/auth/signin");
+          const from = pathname?.startsWith("/dashboard/admin") ? "admin" : "dashboard";
+
+          router.push(`/auth/signin?signed_out=1&from=${from}`);
           router.refresh();
         });
       }}

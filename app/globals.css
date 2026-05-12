@@ -577,6 +577,16 @@ button {
   margin: 0;
 }
 
+.auth-session-banner {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(94, 106, 79, 0.18);
+  background: rgba(94, 106, 79, 0.1);
+  color: #46503a;
+  line-height: 1.6;
+}
+
 .stack {
   display: grid;
   gap: 18px;
@@ -698,18 +708,33 @@ button {
 }
 
 .dashboard-account-card {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 7px 12px;
   border-radius: 18px;
   border: 1px solid rgba(73, 51, 34, 0.12);
   background: rgba(255, 252, 247, 0.86);
+  min-width: 250px;
+}
+
+.dashboard-account-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.dashboard-account-label {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .dashboard-account-email {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .notes-workspace {

@@ -9,6 +9,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ profile, children }: AppShellProps) {
+  const roleLabel = profile.role === "admin" ? "管理员" : "用户";
+
   return (
     <div className="dashboard-shell grain">
       <div className="dashboard-frame">
@@ -31,8 +33,11 @@ export function AppShell({ profile, children }: AppShellProps) {
               ) : null}
             </div>
             <div className="dashboard-account-card">
-              <span className={`role-pill ${profile.role}`}>{profile.role === "admin" ? "管理员" : "用户"}</span>
-              <span className="dashboard-account-email">{profile.email}</span>
+              <div className="dashboard-account-copy">
+                <span className="dashboard-account-label">当前登录身份</span>
+                <span className="dashboard-account-email">{profile.email}</span>
+              </div>
+              <span className={`role-pill ${profile.role}`}>{roleLabel}</span>
             </div>
             <div className="dashboard-account-actions">
               <SignOutButton />

@@ -3,9 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
+import { NoteCollectionPanel } from "@/components/notes/note-collection-panel";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { NotesList } from "@/components/notes/notes-list";
 import { canExportAiAnalysis, downloadBatchAiAnalysisZip } from "@/lib/exports/ai-analysis";
+import { getSearchableNoteText } from "@/lib/notes/search";
 import {
   getNoteLifecycleLabel,
   noteLifecycleViewOptions,
@@ -58,9 +60,7 @@ function matchesSearch(note: Note, query: string) {
     return true;
   }
 
-  const tags = parseTags(note.marker).join(" ");
-
-  return [note.title, tags, note.content].some((value) => value.toLowerCase().includes(normalized));
+  return getSearchableNoteText(note).includes(normalized);
 }
 
 function getFilteredNotes(
@@ -90,6 +90,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
   const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
   const [savePending, startSave] = useTransition();
   const [lifecyclePending, startLifecycleUpdate] = useTransition();
@@ -104,6 +105,9 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   );
   const analyzedCount = notes.filter((note) => note.ai_status === "done").length;
   const filteredNotes = getFilteredNotes(notes, search, activeTag, activeLifecycleView);
+  const collectionNotes = selectedCollectionIds
+    .map((id) => notes.find((note) => note.id === id))
+    .filter((note): note is Note => Boolean(note));
   const lifecycleCounts = useMemo(
     () => ({
       all: notes.length,
@@ -304,6 +308,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       const nextSelected = remaining[0] ?? null;
 
       setNotes(remaining);
+      setSelectedCollectionIds((current) => current.filter((id) => id !== selectedId));
       pruneSelectedExports(remaining, search, activeTag, activeLifecycleView);
       setSelectedId(nextSelected?.id ?? null);
       setDraft(toDraft(nextSelected));
@@ -415,6 +420,20 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     );
   }
 
+  function handleToggleCollection(noteId: string) {
+    setSelectedCollectionIds((current) =>
+      current.includes(noteId) ? current.filter((id) => id !== noteId) : [...current, noteId]
+    );
+  }
+
+  function handleRemoveFromCollection(noteId: string) {
+    setSelectedCollectionIds((current) => current.filter((id) => id !== noteId));
+  }
+
+  function handleClearCollection() {
+    setSelectedCollectionIds([]);
+  }
+
   function handleSelectAllExportable() {
     if (!exportableFilteredNotes.length) {
       setBatchFeedback("当前筛选结果里没有可导出的 AI 分析内容。");
@@ -508,12 +527,14 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           visibleSelectedExportCount={visibleSelectedExportIds.length}
           batchFeedback={batchFeedback}
           batchExportPending={batchExportPending}
+          collectionIds={selectedCollectionIds}
           onSearchChange={(value) => {
             setSearch(value);
             pruneSelectedExports(notes, value, activeTag, activeLifecycleView);
           }}
           onCreateNew={createNewNote}
           onSelect={selectNote}
+          onToggleCollection={handleToggleCollection}
           onTagFilterChange={(value) => {
             setActiveTag(value);
             pruneSelectedExports(notes, search, value, activeLifecycleView);
@@ -543,13 +564,22 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           onImportFromUrl={handleImportFromUrl}
         />
 
-        <AiAnalysisPanel
-          key={selectedNote?.id ?? "empty-note-panel"}
-          note={selectedNote}
-          isAnalyzing={analysisPending || selectedNote?.ai_status === "loading"}
-          error={analysisError}
-          onAnalyze={handleAnalyze}
-        />
+        <div className="workspace-side-stack">
+          <NoteCollectionPanel
+            notes={collectionNotes}
+            onSelect={selectNote}
+            onRemove={handleRemoveFromCollection}
+            onClear={handleClearCollection}
+          />
+
+          <AiAnalysisPanel
+            key={selectedNote?.id ?? "empty-note-panel"}
+            note={selectedNote}
+            isAnalyzing={analysisPending || selectedNote?.ai_status === "loading"}
+            error={analysisError}
+            onAnalyze={handleAnalyze}
+          />
+        </div>
       </div>
     </div>
   );

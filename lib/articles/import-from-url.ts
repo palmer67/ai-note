@@ -79,6 +79,9 @@ const COMMON_BROWSER_PATHS = [
 ].filter(Boolean) as string[];
 
 const MAX_REDIRECTS = 5;
+const RENDERED_IMPORT_TIMEOUT_MS = 35_000;
+
+let renderedImportActive = false;
 
 function decodeHtmlEntities(value: string) {
   return value
@@ -497,7 +500,29 @@ function getBrowserExecutablePath() {
   return COMMON_BROWSER_PATHS.find((path) => existsSync(path)) ?? null;
 }
 
+async function closeBrowserQuietly(browser: Awaited<ReturnType<typeof chromium.launch>>) {
+  try {
+    await browser.close();
+  } catch {
+    // Browser may already be closed by the timeout guard.
+  }
+}
+
 async function fetchRenderedHtml(url: string) {
+  if (renderedImportActive) {
+    throw new Error("增强导入正在处理其他链接，请稍后再试。");
+  }
+
+  renderedImportActive = true;
+
+  try {
+    return await fetchRenderedHtmlUnchecked(url);
+  } finally {
+    renderedImportActive = false;
+  }
+}
+
+async function fetchRenderedHtmlUnchecked(url: string) {
   const executablePath = getBrowserExecutablePath();
 
   if (!executablePath) {
@@ -509,7 +534,15 @@ async function fetchRenderedHtml(url: string) {
     headless: true
   });
 
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let timedOut = false;
+
   try {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      void browser.close();
+    }, RENDERED_IMPORT_TIMEOUT_MS);
+
     const page = await browser.newPage({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
@@ -543,8 +576,18 @@ async function fetchRenderedHtml(url: string) {
       html: await page.content(),
       finalUrl: page.url()
     };
+  } catch (error) {
+    if (timedOut) {
+      throw new Error("增强导入超时，请稍后重试或手动粘贴正文。");
+    }
+
+    throw error;
   } finally {
-    await browser.close();
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    await closeBrowserQuietly(browser);
   }
 }
 

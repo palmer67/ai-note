@@ -92,6 +92,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
   const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
   const [savePending, startSave] = useTransition();
+  const [lifecyclePending, startLifecycleUpdate] = useTransition();
   const [deletePending, startDelete] = useTransition();
   const [analysisPending, startAnalysis] = useTransition();
   const [importPending, startImport] = useTransition();
@@ -174,13 +175,37 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   }
 
   function updateSelectedNoteLifecycleStatus(status: NoteLifecycleStatus) {
-    if (!selectedId) {
+    if (!selectedId || selectedNote?.lifecycle_status === status) {
       return;
     }
 
-    setNotes((current) => current.map((note) => (note.id === selectedId ? { ...note, lifecycle_status: status } : note)));
     setFeedback(null);
     setAnalysisError(null);
+
+    startLifecycleUpdate(async () => {
+      const { data, error } = await supabase
+        .from("notes")
+        .update({
+          lifecycle_status: status
+        })
+        .eq("id", selectedId)
+        .select("*")
+        .single();
+
+      if (error || !data) {
+        setFeedback(`状态更新失败：${error?.message ?? "未知错误"}`);
+        return;
+      }
+
+      const updatedNote = data as unknown as Note;
+
+      setNotes((currentNotes) => {
+        const nextNotes = sortNotes(currentNotes.map((note) => (note.id === updatedNote.id ? updatedNote : note)));
+        pruneSelectedExports(nextNotes, search, activeTag, activeLifecycleView);
+        return nextNotes;
+      });
+      setFeedback(`状态已更新为「${getNoteLifecycleLabel(updatedNote.lifecycle_status)}」。`);
+    });
   }
 
   function handleSave() {
@@ -506,6 +531,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
           hasSavedNote={Boolean(selectedId)}
           lifecycleStatus={selectedNote?.lifecycle_status ?? "inbox"}
           isSaving={savePending}
+          isSavingLifecycleStatus={lifecyclePending}
           isDeleting={deletePending}
           isImporting={importPending}
           feedback={feedback}

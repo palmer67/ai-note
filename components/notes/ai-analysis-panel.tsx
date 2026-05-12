@@ -7,6 +7,7 @@ import {
   getExportFormatLabel,
   type ExportFormat
 } from "@/lib/exports/ai-analysis";
+import { getNoteAiStatusLabel } from "@/lib/note-ai-status";
 import type { Note } from "@/lib/types";
 
 interface AiAnalysisPanelProps {
@@ -17,21 +18,6 @@ interface AiAnalysisPanelProps {
 }
 
 const exportFormats: ExportFormat[] = ["markdown", "json", "html"];
-
-function getAiStatusLabel(status: Note["ai_status"]) {
-  switch (status) {
-    case "idle":
-      return "未分析";
-    case "loading":
-      return "分析中";
-    case "done":
-      return "已完成";
-    case "error":
-      return "失败";
-    default:
-      return status;
-  }
-}
 
 function buildCopyText(note: NonNullable<AiAnalysisPanelProps["note"]>) {
   const summary = note.ai_summary;
@@ -192,7 +178,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
           <div className="analysis-block">
             {summary ? (
               <>
-                <span className="status-badge">状态：{getAiStatusLabel(note.ai_status)}</span>
+                <span className="status-badge">状态：{getNoteAiStatusLabel(note.ai_status)}</span>
 
                 <section className="analysis-section">
                   <h3>主题</h3>

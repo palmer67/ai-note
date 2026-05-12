@@ -14,9 +14,11 @@ interface NotesListProps {
   visibleSelectedExportCount: number;
   batchFeedback: string | null;
   batchExportPending: boolean;
+  collectionIds: string[];
   onSearchChange: (value: string) => void;
   onCreateNew: () => void;
   onSelect: (note: Note) => void;
+  onToggleCollection: (noteId: string) => void;
   onTagFilterChange: (tag: string | null) => void;
   onEnterBatchMode: () => void;
   onExitBatchMode: () => void;
@@ -42,9 +44,11 @@ export function NotesList({
   visibleSelectedExportCount,
   batchFeedback,
   batchExportPending,
+  collectionIds,
   onSearchChange,
   onCreateNew,
   onSelect,
+  onToggleCollection,
   onTagFilterChange,
   onEnterBatchMode,
   onExitBatchMode,
@@ -107,7 +111,7 @@ export function NotesList({
         className="search-input"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
-        placeholder="搜索标题、标签或正文内容"
+        placeholder="搜索标题、标签、来源、正文或 AI 分析"
         type="search"
       />
 
@@ -143,11 +147,11 @@ export function NotesList({
             const tags = parseTags(note.marker);
             const exportable = canExportAiAnalysis(note);
             const selectedForExport = selectedExportIds.includes(note.id);
+            const selectedForCollection = collectionIds.includes(note.id);
 
             return (
-              <button
+              <article
                 key={note.id}
-                type="button"
                 className={[
                   "note-row",
                   !batchMode && selectedId === note.id ? "active" : "",
@@ -157,60 +161,75 @@ export function NotesList({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                disabled={batchMode && !exportable}
-                aria-pressed={batchMode ? selectedForExport : undefined}
-                onClick={() => {
-                  if (batchMode) {
-                    if (exportable) {
-                      onToggleBatchSelection(note.id);
-                    }
-                    return;
-                  }
-
-                  onSelect(note);
-                }}
               >
-                {batchMode ? (
-                  <div className="note-row-selection">
-                    <span
-                      className={[
-                        "selection-indicator",
-                        selectedForExport ? "selected" : "",
-                        !exportable ? "disabled" : ""
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      {!exportable ? "不可导出" : selectedForExport ? "已选择" : "选择"}
-                    </span>
-                  </div>
-                ) : null}
+                <button
+                  type="button"
+                  className="note-row-main"
+                  disabled={batchMode && !exportable}
+                  aria-pressed={batchMode ? selectedForExport : undefined}
+                  onClick={() => {
+                    if (batchMode) {
+                      if (exportable) {
+                        onToggleBatchSelection(note.id);
+                      }
+                      return;
+                    }
 
-                <div className="note-row-topline">
-                  <span className={`status-badge lifecycle-badge lifecycle-${note.lifecycle_status}`}>
-                    {getNoteLifecycleLabel(note.lifecycle_status)}
-                  </span>
-                  <span className="note-row-date">{dateFormatter.format(new Date(note.updated_at))}</span>
-                </div>
-
-                <div className="note-row-title">{note.title}</div>
-
-                <div className="note-row-meta">
-                  {tags.length ? (
-                    <div className="tag-chip-row compact">
-                      {tags.map((tag) => (
-                        <span key={tag} className="tag-chip">
-                          {tag}
-                        </span>
-                      ))}
+                    onSelect(note);
+                  }}
+                >
+                  {batchMode ? (
+                    <div className="note-row-selection">
+                      <span
+                        className={[
+                          "selection-indicator",
+                          selectedForExport ? "selected" : "",
+                          !exportable ? "disabled" : ""
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        {!exportable ? "不可导出" : selectedForExport ? "已选择" : "选择"}
+                      </span>
                     </div>
-                  ) : (
-                    <span className="muted">无标签</span>
-                  )}
-                </div>
+                  ) : null}
 
-                {batchMode && !exportable ? <span className="note-row-export-hint">这篇笔记还没有 AI 分析结果</span> : null}
-              </button>
+                  <div className="note-row-topline">
+                    <span className={`status-badge lifecycle-badge lifecycle-${note.lifecycle_status}`}>
+                      {getNoteLifecycleLabel(note.lifecycle_status)}
+                    </span>
+                    <span className="note-row-date">{dateFormatter.format(new Date(note.updated_at))}</span>
+                  </div>
+
+                  <div className="note-row-title">{note.title}</div>
+
+                  <div className="note-row-meta">
+                    {tags.length ? (
+                      <div className="tag-chip-row compact">
+                        {tags.map((tag) => (
+                          <span key={tag} className="tag-chip">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="muted">无标签</span>
+                    )}
+                  </div>
+
+                  {batchMode && !exportable ? <span className="note-row-export-hint">这篇笔记还没有 AI 分析结果</span> : null}
+                </button>
+
+                {!batchMode ? (
+                  <button
+                    type="button"
+                    className={`mini-button note-collection-toggle${selectedForCollection ? " active" : ""}`}
+                    onClick={() => onToggleCollection(note.id)}
+                  >
+                    {selectedForCollection ? "已加入" : "加入资料集"}
+                  </button>
+                ) : null}
+              </article>
             );
           })
         ) : (

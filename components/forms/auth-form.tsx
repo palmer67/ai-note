@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -42,6 +42,7 @@ function translateAuthMessage(message: string) {
 
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,6 +50,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [pending, startTransition] = useTransition();
 
   const isSignIn = mode === "signin";
+  const signedOut = searchParams.get("signed_out") === "1";
+  const from = searchParams.get("from");
   const isError = feedback ? /required|invalid|error|failed|失败|错误|无效|不正确|尚未/i.test(feedback) : false;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -109,6 +112,14 @@ export function AuthForm({ mode }: AuthFormProps) {
               : "先注册一个普通账号，后面可以再到 Supabase 里把它提升为管理员。"}
           </p>
         </div>
+
+        {isSignIn && signedOut ? (
+          <p className="auth-session-banner">
+            {from === "admin"
+              ? "你已退出管理员工作台，请重新登录后再访问后台。"
+              : "你已退出当前会话，如需继续访问工作台请重新登录。"}
+          </p>
+        ) : null}
 
         <form className="stack auth-form-fields" onSubmit={handleSubmit}>
           <div className="field">

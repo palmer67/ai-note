@@ -84,8 +84,12 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
     return matchesUser && matchesAiStatus && matchesLifecycle && matchesMarker;
   });
 
-  const availableTags = Array.from(new Set(scopedNotes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
-    left.localeCompare(right, "zh-CN")
+  const availableTags = useMemo(
+    () =>
+      Array.from(new Set(scopedNotes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
+        left.localeCompare(right, "zh-CN")
+      ),
+    [scopedNotes]
   );
   const effectiveActiveTag = activeTag && availableTags.includes(activeTag) ? activeTag : null;
   const filteredNotes = scopedNotes.filter((note) =>
@@ -100,6 +104,15 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
     }),
     [notes]
   );
+
+  function resetActiveTagForFilterChange() {
+    if (!activeTag) {
+      return;
+    }
+
+    setActiveTag(null);
+    setNotesFeedback("当前标签筛选已重置，因为它不在新的结果范围内。");
+  }
 
   function handleRoleToggle(targetProfile: Profile) {
     const nextRole: AppRole = targetProfile.role === "admin" ? "user" : "admin";
@@ -291,7 +304,10 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 id="admin-user-filter"
                 className="admin-select"
                 value={selectedUserId}
-                onChange={(event) => setSelectedUserId(event.target.value)}
+                onChange={(event) => {
+                  setSelectedUserId(event.target.value);
+                  resetActiveTagForFilterChange();
+                }}
               >
                 <option value="all">全部用户</option>
                 {profileRows.map((profile) => (
@@ -308,7 +324,10 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 id="admin-status-filter"
                 className="admin-select"
                 value={selectedAiStatus}
-                onChange={(event) => setSelectedAiStatus(event.target.value as "all" | AiStatus)}
+                onChange={(event) => {
+                  setSelectedAiStatus(event.target.value as "all" | AiStatus);
+                  resetActiveTagForFilterChange();
+                }}
               >
                 <option value="all">全部状态</option>
                 <option value="idle">未分析</option>
@@ -324,7 +343,10 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 id="admin-lifecycle-filter"
                 className="admin-select"
                 value={selectedLifecycleStatus}
-                onChange={(event) => setSelectedLifecycleStatus(event.target.value as "all" | NoteLifecycleStatus)}
+                onChange={(event) => {
+                  setSelectedLifecycleStatus(event.target.value as "all" | NoteLifecycleStatus);
+                  resetActiveTagForFilterChange();
+                }}
               >
                 <option value="all">全部状态</option>
                 {noteLifecycleOptions.map((option) => (
@@ -342,7 +364,10 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
                 className="admin-select"
                 type="text"
                 value={markerKeyword}
-                onChange={(event) => setMarkerKeyword(event.target.value)}
+                onChange={(event) => {
+                  setMarkerKeyword(event.target.value);
+                  resetActiveTagForFilterChange();
+                }}
                 placeholder="搜索标题、标记、链接或正文"
               />
             </div>

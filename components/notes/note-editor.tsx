@@ -11,6 +11,7 @@ interface NoteEditorProps {
   hasSavedNote: boolean;
   lifecycleStatus: NoteLifecycleStatus;
   isSaving: boolean;
+  isSavingLifecycleStatus: boolean;
   isDeleting: boolean;
   isImporting: boolean;
   feedback: string | null;
@@ -27,6 +28,7 @@ export function NoteEditor({
   hasSavedNote,
   lifecycleStatus,
   isSaving,
+  isSavingLifecycleStatus,
   isDeleting,
   isImporting,
   feedback,
@@ -69,6 +71,7 @@ export function NoteEditor({
             id="note-lifecycle-status"
             className="admin-select"
             value={lifecycleStatus}
+            disabled={!hasSavedNote || isSavingLifecycleStatus}
             onChange={(event) => onLifecycleStatusChange(event.target.value as NoteLifecycleStatus)}
           >
             {noteLifecycleOptions.map((option) => (
@@ -77,7 +80,9 @@ export function NoteEditor({
               </option>
             ))}
           </select>
-          <span className="inline-badge">{getNoteLifecycleLabel(lifecycleStatus)}</span>
+          <span className="inline-badge">
+            {isSavingLifecycleStatus ? "保存状态中..." : getNoteLifecycleLabel(lifecycleStatus)}
+          </span>
         </div>
       </div>
 

@@ -108,6 +108,17 @@ docs/plans/
   设计文档与实现计划
 ```
 
+## 文档导航
+
+- [架构文档索引](./docs/architecture/README.md)
+- [认证与会话模块](./docs/architecture/01-auth-and-session.md)
+- [用户工作台模块](./docs/architecture/02-user-workspace.md)
+- [管理后台模块](./docs/architecture/03-admin-backoffice.md)
+- [AI、导入、导出与检索模块](./docs/architecture/04-ai-import-export.md)
+- [数据库与权限模型](./docs/architecture/05-database-and-rls.md)
+- [架构审查与优化建议](./docs/architecture/06-architecture-review.md)
+- [测试规范](./docs/testing/test-strategy.md)
+
 ## 本地开发
 
 ### 1. 安装依赖

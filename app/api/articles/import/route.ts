@@ -31,6 +31,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       article,
+      // extractionMode 用来区分“正文可信度较高”还是“仅拿到基础内容”。
       message:
         article.extractionMode === "article"
           ? "已自动导入标题和正文，你可以继续补充或修改。"

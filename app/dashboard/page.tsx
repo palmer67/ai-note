@@ -14,6 +14,8 @@ export default async function DashboardPage() {
     throw new Error("加载用户笔记失败。");
   }
 
+  // 如果服务重启或请求中断导致 ai_status 卡在 loading，
+  // 页面加载时先把它修正成 error，避免用户一直看到“分析中”假状态。
   const notes = ((data as Note[] | null) ?? []).map((note) =>
     note.ai_status === "loading"
       ? {

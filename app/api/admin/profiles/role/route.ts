@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "缺少目标用户或角色参数。" }, { status: 400 });
   }
 
+  // 角色切换的并发安全和“保留最后一个管理员”约束都在数据库 RPC 里处理。
   const { data: updatedProfile, error } = await supabase.rpc("update_profile_role_safely", {
     actor_user_id: user.id,
     target_profile_id: targetProfileId,

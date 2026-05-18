@@ -12,6 +12,7 @@ export function getSupabasePublicKey() {
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const legacyAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  // 保留对旧 anon key 名称的兼容，避免历史环境变量配置直接失效。
   if (publishableKey) {
     return publishableKey;
   }

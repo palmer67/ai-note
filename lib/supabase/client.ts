@@ -19,6 +19,7 @@ export function createClient() {
   }
 
   if (!browserClient) {
+    // 浏览器端只创建一个共享 client，避免组件重复实例化导致额外开销。
     browserClient = createBrowserClient(supabaseUrl, supabasePublicKey);
   }
 

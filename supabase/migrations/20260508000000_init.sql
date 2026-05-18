@@ -2,6 +2,7 @@ begin;
 
 create extension if not exists pgcrypto;
 
+-- 角色枚举只在首次初始化时创建，避免重复执行迁移时报错。
 do $$
 begin
   if not exists (
@@ -14,6 +15,7 @@ begin
 end
 $$;
 
+-- 统一维护 updated_at，避免每次应用层手工写时间戳。
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -24,6 +26,7 @@ begin
 end;
 $$;
 
+-- profiles 存业务身份和角色，auth.users 仍然是 Supabase 的认证源。
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null unique,
@@ -33,6 +36,7 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+-- notes 是当前产品的核心业务表，正文、标签、AI 结果都挂在这里。
 create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
@@ -78,6 +82,7 @@ after insert on auth.users
 for each row
 execute function public.handle_new_user();
 
+-- RLS 规则里会复用管理员判断，所以抽成数据库函数。
 create or replace function public.is_admin(check_user_id uuid)
 returns boolean
 language sql
@@ -98,6 +103,7 @@ grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.notes to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
 
+-- RLS 是这个项目的真实权限边界，前端展示只是一层体验优化。
 alter table public.profiles enable row level security;
 alter table public.notes enable row level security;
 

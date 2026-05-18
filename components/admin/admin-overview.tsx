@@ -94,6 +94,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
   const [selectedLifecycleStatus, setSelectedLifecycleStatus] = useState<"all" | NoteLifecycleStatus>("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [markerKeyword, setMarkerKeyword] = useState("");
+  // 关键词筛选用 deferred value，避免输入时每个字符都触发整张表重算。
   const deferredMarkerKeyword = useDeferredValue(markerKeyword);
 
   const profileById = new Map(profileRows.map((profile) => [profile.id, profile]));
@@ -126,6 +127,8 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
       return;
     }
 
+    // 标签候选集依赖“其他筛选条件”的当前结果，
+    // 所以用户切换用户、AI 状态或生命周期后，旧标签可能已经失效。
     const nextAvailableTags = getAvailableTagsForNotes(getScopedNotesForFilters(notes, nextFilters));
 
     if (!nextAvailableTags.includes(activeTag)) {
@@ -142,6 +145,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
 
     startTransition(async () => {
       try {
+        // 角色安全约束放在数据库 RPC 里，这里只负责发请求和回填结果。
         const response = await fetch("/api/admin/profiles/role", {
           method: "POST",
           headers: {
@@ -185,6 +189,7 @@ export function AdminOverview({ currentAdminId, profiles, notes }: AdminOverview
 
     startExport(async () => {
       try {
+        // 后台导出直接复用前台的导出器，保持导出格式和文件结构一致。
         await downloadBatchAiAnalysisZip(exportableFilteredNotes);
         setNotesFeedback(`已导出 ${exportableFilteredNotes.length} 条笔记，压缩包中包含 Markdown、JSON 和 HTML。`);
       } catch (error) {

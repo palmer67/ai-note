@@ -92,6 +92,7 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* 首页右侧不是功能面板，而是把“收藏 -> 标记 -> AI 拆解”的主流程直接讲清楚。 */}
         <aside className="surface hero-card reading-card">
           <div className="card-strip">
             <span className="eyebrow">AI 输出示例</span>

@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "请先输入你的问题。" }, { status: 400 });
   }
 
+  // 问答链路只返回答案，不修改数据库里的 AI 分析结果。
   const { data: note, error: noteError } = await supabase
     .from("notes")
     .select("*")

@@ -64,6 +64,7 @@ function downloadBlob(filename: string, blob: Blob) {
 }
 
 function renderMarkdownFile(payload: ExportableAiAnalysisPayload) {
+  // Markdown 用 frontmatter 承载元信息，方便后续被 Obsidian、静态站点或脚本继续处理。
   const frontmatter = [
     "---",
     `title: "${escapeYamlString(payload.title)}"`,
@@ -283,6 +284,7 @@ function getUniqueFolderName(baseName: string, usedNames: Set<string>) {
     return baseName;
   }
 
+  // 批量导出时标题可能重复，这里保证 ZIP 内每篇笔记都有稳定且不冲突的目录名。
   let suffix = 2;
 
   while (usedNames.has(`${baseName}-${suffix}`)) {
@@ -308,6 +310,7 @@ export function buildExportableAiAnalysisPayload(note: Note): ExportableAiAnalys
     return null;
   }
 
+  // 导出层统一从 Note 归一化出一个稳定 payload，后续所有格式都从这里生成。
   return {
     noteId: note.id,
     title: note.title,
@@ -355,6 +358,7 @@ export async function downloadBatchAiAnalysisZip(notes: Note[]) {
     folder.file("note.html", renderExportFile(payload, "html").content);
   }
 
+  // 压缩包名称按日期切分，避免同一批导出在本地下载目录里互相覆盖。
   const archiveName = `ai-analysis-export-${new Date().toISOString().slice(0, 10)}.zip`;
   const archiveBlob = await zip.generateAsync({ type: "blob" });
 

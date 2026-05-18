@@ -26,6 +26,7 @@ export function AppShell({ profile, children }: AppShellProps) {
               <Link href="/dashboard" className="ghost-button nav-button">
                 我的工作台
               </Link>
+              {/* 管理后台入口只在布局层按角色展示，真正访问控制仍由服务端守卫负责。 */}
               {profile.role === "admin" ? (
                 <Link href="/dashboard/admin" className="ghost-button nav-button">
                   管理后台

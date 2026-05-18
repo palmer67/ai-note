@@ -169,6 +169,7 @@ export function NotesList({
                   aria-pressed={batchMode ? selectedForExport : undefined}
                   onClick={() => {
                     if (batchMode) {
+                      // 批量导出模式下，整行点击语义切换为“选择导出项”，不再切换当前笔记。
                       if (exportable) {
                         onToggleBatchSelection(note.id);
                       }
@@ -224,6 +225,7 @@ export function NotesList({
                   <button
                     type="button"
                     className={`mini-button note-collection-toggle${selectedForCollection ? " active" : ""}`}
+                    // 资料集操作按钮独立于整行主按钮，避免出现按钮嵌套按钮的无效结构。
                     onClick={() => onToggleCollection(note.id)}
                   >
                     {selectedForCollection ? "已加入" : "加入资料集"}

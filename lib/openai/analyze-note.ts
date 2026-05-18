@@ -45,6 +45,7 @@ function normalizeBreakdown(value: unknown): ArticleBreakdown {
     throw new Error("模型返回结果无法解析为结构化拆解。");
   }
 
+  // 模型即使声明返回 JSON，也可能出现字段缺失或类型漂移，这里统一做兜底归一化。
   const payload = value as Record<string, unknown>;
 
   return {
@@ -62,6 +63,7 @@ export async function analyzeNote(input: AnalyzeNoteInput) {
   const response = await runModelRequest(() =>
     client.chat.completions.create({
       model: getModelName(),
+      // 强制要求 JSON，减少后面解析和落库时的格式不确定性。
       response_format: {
         type: "json_object"
       },
@@ -97,6 +99,7 @@ ${input.content}
   try {
     parsed = JSON.parse(raw);
   } catch {
+    // 一旦模型没有遵守 JSON 约束，直接抛出明确错误，避免污染数据库。
     throw new Error("模型返回的 JSON 格式不符合预期。");
   }
 

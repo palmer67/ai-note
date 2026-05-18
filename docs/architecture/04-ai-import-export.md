@@ -4,6 +4,7 @@
 
 - `app/api/ai/analyze/route.ts`
 - `app/api/ai/ask-note/route.ts`
+- `app/api/ai/ask-collection/route.ts`
 - `app/api/articles/import/route.ts`
 - `lib/openai/client.ts`
 - `lib/openai/analyze-note.ts`
@@ -20,6 +21,7 @@
 
 - 对单篇笔记执行结构化 AI 分析。
 - 对单篇笔记执行后续问答。
+- 对临时资料集执行多篇综合问答。
 - 从外部 URL 抓取文章标题和正文。
 - 将 AI 分析结果导出为 Markdown、JSON、HTML 或 ZIP。
 - 为工作台提供统一搜索文本拼接逻辑。
@@ -30,14 +32,17 @@
 flowchart TD
   Workspace["工作台"] --> AnalyzeApi["POST /api/ai/analyze"]
   Workspace --> AskApi["POST /api/ai/ask-note"]
+  Workspace --> AskCollectionApi["POST /api/ai/ask-collection"]
   Workspace --> ImportApi["POST /api/articles/import"]
   Workspace --> Exporter["lib/exports/ai-analysis.ts"]
   Workspace --> SearchHelper["lib/notes/search.ts"]
 
   AnalyzeApi --> AnalyzeService["analyzeNote()"]
   AskApi --> AskService["askNote()"]
+  AskCollectionApi --> AskCollectionService["askCollection()"]
   AnalyzeService --> ModelClient["lib/openai/client.ts"]
   AskService --> ModelClient
+  AskCollectionService --> ModelClient
   ModelClient --> DeepSeek["DeepSeek / OpenAI Compatible API"]
 
   ImportApi --> Importer["importArticleFromUrl()"]
@@ -63,6 +68,13 @@ flowchart TD
 
 - 不回写数据库，只返回一段答案。
 - 输入上下文由标题、来源、标签、正文和已有摘要共同组成。
+
+### 资料集问答
+
+- 基于当前临时资料集提问，不新建数据库表。
+- 第一版最多支持 5 篇笔记。
+- 优先利用每篇笔记的 AI 摘要，没有摘要时才补少量正文片段。
+- 返回综合回答和参考资料标题列表。
 
 ### URL 导入
 

@@ -12,6 +12,11 @@ export interface ArticleBreakdown {
   takeaways: string[];
 }
 
+export interface CollectionAnswer {
+  answer: string;
+  referencedTitles: string[];
+}
+
 export interface Profile {
   id: string;
   email: string;

@@ -80,6 +80,7 @@ describe("NotesWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     createClientMock.mockReturnValue(createSupabaseClientMock());
+    vi.stubGlobal("fetch", vi.fn());
   });
 
   it("filters notes by search text", () => {
@@ -133,5 +134,35 @@ describe("NotesWorkspace", () => {
 
     expect(screen.getByRole("button", { name: "退出批量模式" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "加入资料集" })).not.toBeInTheDocument();
+  });
+
+  it("submits collection qa and shows the answer", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          answer: "这些文章都强调先做结构化整理。",
+          referencedTitles: ["AI 写作方法"]
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "加入资料集" })[0]);
+    fireEvent.change(screen.getByPlaceholderText("例如：这些文章共同强调了哪些方法？它们在哪些观点上互相补充？"), {
+      target: { value: "这些文章的共同点是什么？" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "开始资料集问答" }));
+
+    expect(await screen.findByText("这些文章都强调先做结构化整理。")).toBeInTheDocument();
+    expect(screen.getByText("参考资料：")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalled();
   });
 });

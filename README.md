@@ -37,6 +37,7 @@ AI Notes 是一个面向学习与知识整理场景的全栈 AI 笔记应用。
 - 从搜索结果中把多篇笔记加入临时资料集，方便后续集中阅读和继续扩展多篇问答
 - 对单篇笔记发起 AI 分析
 - 基于单篇笔记继续做 AI 问答
+- 基于当前临时资料集做多篇综合问答
 - 保存笔记修改时保留已有 AI 分析结果
 - 一键复制 AI 分析结果
 - 本地导出 AI 分析内容：
@@ -205,12 +206,17 @@ npm run test:run
 - 4 条核心 API 路由测试：
   - `/api/ai/analyze`
   - `/api/ai/ask-note`
+  - `/api/ai/ask-collection`
   - `/api/articles/import`
   - `/api/admin/profiles/role`
 - 关键组件集成测试：
   - `AuthForm`
   - `NotesWorkspace`
   - `AdminOverview`
+- 资料集问答：
+  - 支持基于当前临时资料集做多篇综合问答
+  - 第一版最多支持 5 篇资料
+  - 优先使用每篇笔记的 AI 摘要，必要时补正文片段
 
 ### 6. 日常恢复项目时要不要启动数据库网页
 

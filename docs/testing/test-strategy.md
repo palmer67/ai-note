@@ -14,6 +14,7 @@
   - `vitest` 测试底座
   - 第一批稳定模块和同步组件测试
   - 第二批核心 API 路由测试
+  - 第三批关键组件集成测试
   - 人工手测
 - 缺失：
   - API 集成测试
@@ -125,6 +126,8 @@ flowchart TD
 - `NotesWorkspace`
 - `AdminOverview`
 - `AuthForm`
+
+当前阶段完成后，以上组件应至少覆盖关键状态反馈、筛选联动、资料集交互和角色操作回填。
 
 ### 第 4 阶段：补 Playwright 冒烟 E2E
 

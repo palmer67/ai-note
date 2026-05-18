@@ -31,9 +31,10 @@ export function NoteCollectionPanel({
   // 资料集本身不要求所有笔记都完成分析，所以这里把已分析和待分析数量分开展示。
   const analyzedCount = notes.filter((note) => note.ai_summary).length;
   const pendingCount = notes.length - analyzedCount;
+  const collectionStateClass = notes.length ? (answer ? "has-answer" : "has-notes") : "is-empty";
 
   return (
-    <section className="panel collection-panel">
+    <section className={`panel collection-panel ${collectionStateClass}`}>
       <div className="panel-header">
         <div>
           <h2 className="panel-title">临时资料集</h2>

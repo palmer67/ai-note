@@ -129,11 +129,13 @@ describe("NotesWorkspace", () => {
     fireEvent.click(within(collectionSection).getByRole("button", { name: "移除" }));
 
     expect(within(collectionSection).getByText("还没有加入资料。")).toBeInTheDocument();
+    expect(collectionSection).toHaveClass("is-empty");
 
     fireEvent.click(screen.getAllByRole("button", { name: "加入资料集" })[0]);
     fireEvent.click(within(collectionSection).getByRole("button", { name: "清空" }));
 
     expect(within(collectionSection).getByText("还没有加入资料。")).toBeInTheDocument();
+    expect(collectionSection).toHaveClass("is-empty");
   });
 
   it("switches into batch export mode and hides collection buttons", () => {
@@ -163,6 +165,11 @@ describe("NotesWorkspace", () => {
     );
 
     render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
+    const collectionSection = screen.getByRole("heading", { name: "临时资料集" }).closest("section");
+
+    if (!collectionSection) {
+      throw new Error("Missing collection section");
+    }
 
     fireEvent.click(screen.getAllByRole("button", { name: "加入资料集" })[0]);
     fireEvent.change(screen.getByPlaceholderText("例如：这些文章共同强调了哪些方法？它们在哪些观点上互相补充？"), {
@@ -173,6 +180,7 @@ describe("NotesWorkspace", () => {
     expect(await screen.findByText("这些文章都强调先做结构化整理。")).toBeInTheDocument();
     expect(screen.getByText("参考资料：")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalled();
+    expect(collectionSection).toHaveClass("has-answer");
   });
 
   it("clears collection qa state when the collection is cleared", async () => {

@@ -1,20 +1,21 @@
 import { vi } from "vitest";
 
-type MaybeRecord = Record<string, unknown> | null;
+type MaybeQueryData = Record<string, unknown> | Array<Record<string, unknown>> | null;
 
 interface QueryResult {
-  data: MaybeRecord;
+  data: MaybeQueryData;
   error: { message: string } | null;
 }
 
 interface RpcResult {
-  data: MaybeRecord;
+  data: MaybeQueryData;
   error: { message: string } | null;
 }
 
 interface SupabaseMockOptions {
   user?: { id: string } | null;
   noteSelectResult?: QueryResult;
+  noteListResult?: QueryResult;
   noteUpdateResult?: QueryResult;
   noteErrorUpdateResult?: QueryResult;
   rpcResult?: RpcResult;
@@ -29,7 +30,8 @@ function createSelectChain(result?: QueryResult) {
     eq: vi.fn().mockReturnValue({
       single: createSingleResult(result),
       maybeSingle: createSingleResult(result)
-    })
+    }),
+    in: vi.fn().mockResolvedValue(result ?? { data: null, error: null })
   };
 }
 
@@ -48,9 +50,13 @@ export function createSupabaseMock(options: SupabaseMockOptions = {}) {
   const noteUpdateChain = createUpdateChain(options.noteUpdateResult);
   const noteErrorUpdateEq = vi.fn().mockResolvedValue(options.noteErrorUpdateResult ?? { data: null, error: null });
   const noteDeleteEq = vi.fn();
+  const noteInResult = vi.fn().mockResolvedValue(options.noteListResult ?? { data: null, error: null });
 
   const notesTable = {
-    select: vi.fn().mockReturnValue(noteSelectChain),
+    select: vi.fn(() => ({
+      ...noteSelectChain,
+      in: noteInResult
+    })),
     update: vi.fn((payload?: Record<string, unknown>) => {
       if (payload?.ai_status === "error") {
         return {
@@ -83,6 +89,7 @@ export function createSupabaseMock(options: SupabaseMockOptions = {}) {
     rpc: vi.fn().mockResolvedValue(options.rpcResult ?? { data: null, error: null }),
     __mocks: {
       noteSelectChain,
+      noteInResult,
       noteUpdateChain,
       noteErrorUpdateEq,
       noteDeleteEq,

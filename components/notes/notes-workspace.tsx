@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { AiAnalysisPanel } from "@/components/notes/ai-analysis-panel";
 import { NoteCollectionPanel } from "@/components/notes/note-collection-panel";
@@ -26,6 +26,10 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const supabase = createClient();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [collectionQuestion, setCollectionQuestion] = useState("");
+  const [collectionAnswer, setCollectionAnswer] = useState<import("@/lib/types").CollectionAnswer | null>(null);
+  const [collectionError, setCollectionError] = useState<string | null>(null);
+  const [collectionAskPending, startCollectionAsk] = useTransition();
   const workspaceState = useNotesWorkspaceState(initialNotes);
   const {
     notes,
@@ -103,6 +107,40 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     setBatchFeedback,
     pruneSelectedExports
   });
+
+  function handleAskCollection() {
+    setCollectionError(null);
+    setCollectionAnswer(null);
+
+    startCollectionAsk(async () => {
+      const response = await fetch("/api/ai/ask-collection", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          noteIds: selectedCollectionIds,
+          question: collectionQuestion
+        })
+      });
+
+      const payload = (await response.json()) as {
+        answer?: string;
+        referencedTitles?: string[];
+        error?: string;
+      };
+
+      if (!response.ok || !payload.answer) {
+        setCollectionError(payload.error ?? "资料集问答失败。");
+        return;
+      }
+
+      setCollectionAnswer({
+        answer: payload.answer,
+        referencedTitles: payload.referencedTitles ?? []
+      });
+    });
+  }
 
   return (
     <div className="stack notes-workspace">
@@ -205,6 +243,12 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             onSelect={selectNote}
             onRemove={handleRemoveFromCollection}
             onClear={handleClearCollection}
+            question={collectionQuestion}
+            answer={collectionAnswer}
+            error={collectionError}
+            isAsking={collectionAskPending}
+            onQuestionChange={setCollectionQuestion}
+            onAsk={handleAskCollection}
           />
 
           <AiAnalysisPanel

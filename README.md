@@ -126,6 +126,8 @@ docs/plans/
 - [数据库与权限模型](./docs/architecture/05-database-and-rls.md)
 - [架构审查与优化建议](./docs/architecture/06-architecture-review.md)
 - [测试规范](./docs/testing/test-strategy.md)
+- [工程工作流](./docs/workflow/engineering-playbook.md)
+- [Git 约定](./docs/workflow/git-playbook.md)
 
 ## 本地开发
 

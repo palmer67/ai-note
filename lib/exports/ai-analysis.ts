@@ -19,6 +19,10 @@ interface RenderedExportFile {
   mimeType: string;
 }
 
+export interface ExportedAiAnalysisFile extends RenderedExportFile {
+  filename: string;
+}
+
 const FORMAT_LABELS: Record<ExportFormat, string> = {
   markdown: "Markdown",
   json: "JSON",
@@ -320,17 +324,26 @@ export function buildExportableAiAnalysisPayload(note: Note): ExportableAiAnalys
   };
 }
 
-export async function downloadSingleAiAnalysisExport(note: Note, format: ExportFormat) {
+export function buildSingleAiAnalysisExportFile(note: Note, format: ExportFormat): ExportedAiAnalysisFile {
   const payload = buildExportableAiAnalysisPayload(note);
 
   if (!payload) {
     throw new Error("当前笔记还没有 AI 分析结果。");
   }
 
+  // 把“渲染导出内容”和“触发浏览器下载”拆开，方便后续单元测试直接校验内容。
   const file = renderExportFile(payload, format);
-  const filename = `${slugifyTitle(payload.title, payload.noteId)}-ai-analysis.${file.extension}`;
 
-  downloadBlob(filename, new Blob([file.content], { type: file.mimeType }));
+  return {
+    ...file,
+    filename: `${slugifyTitle(payload.title, payload.noteId)}-ai-analysis.${file.extension}`
+  };
+}
+
+export async function downloadSingleAiAnalysisExport(note: Note, format: ExportFormat) {
+  const file = buildSingleAiAnalysisExportFile(note, format);
+
+  downloadBlob(file.filename, new Blob([file.content], { type: file.mimeType }));
 }
 
 export async function downloadBatchAiAnalysisZip(notes: Note[]) {

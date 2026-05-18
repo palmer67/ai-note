@@ -11,9 +11,10 @@
 - 已有：
   - `npm run lint`
   - `tsc --noEmit`
+  - `vitest` 测试底座
+  - 第一批稳定模块和同步组件测试
   - 人工手测
 - 缺失：
-  - 单元测试
   - API 集成测试
   - 端到端测试
   - 数据迁移回归测试
@@ -91,9 +92,10 @@ flowchart TD
 
 1. `npm run lint`
 2. `tsc --noEmit`
-3. `next build`
-4. 与改动模块对应的人工冒烟测试
-5. README 或相关文档同步更新
+3. `npm run test:run`
+4. `next build`
+5. 与改动模块对应的人工冒烟测试
+6. README 或相关文档同步更新
 
 ## 建议的自动化落地顺序
 
@@ -104,7 +106,9 @@ flowchart TD
 - `lib/note-ai-status.ts`
 - `lib/notes/search.ts`
 - `lib/exports/ai-analysis.ts` 的格式生成函数
-- `lib/openai/analyze-note.ts` 的归一化逻辑
+- `components/forms/auth-stage.tsx`
+
+当前阶段已完成以上测试底座与首批用例落地。
 
 ### 第 2 阶段：补 API 路由测试
 

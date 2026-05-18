@@ -762,7 +762,7 @@ button {
 
 .workspace-side-stack {
   display: grid;
-  grid-template-rows: minmax(180px, 0.42fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   height: 100%;
   min-height: 0;
@@ -1143,6 +1143,8 @@ button {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 10px;
+  align-self: start;
+  max-height: min(420px, 48vh);
 }
 
 .collection-panel .panel-header {
@@ -1161,6 +1163,29 @@ button {
   min-height: 0;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.collection-qa-block {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(73, 51, 34, 0.12);
+}
+
+.collection-qa-block h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.collection-answer-sources {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--ink-soft);
+  line-height: 1.6;
 }
 
 .collection-item {
@@ -1210,7 +1235,7 @@ button {
 }
 
 .collection-empty {
-  min-height: 132px;
+  min-height: 92px;
 }
 
 .editor-card {

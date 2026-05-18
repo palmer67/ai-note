@@ -340,6 +340,19 @@ select * from public.notes order by updated_at desc;
 
 这也是它后面继续往“个人知识库”方向演进的基础。
 
+当前代码结构上，URL 导入链路也已经拆成分层模块：
+
+- `lib/articles/import-from-url.ts`
+  只保留总编排入口
+- `lib/articles/url-safety.ts`
+  负责 URL 安全校验与安全重定向抓取
+- `lib/articles/html-extraction.ts`
+  负责静态 HTML 提取、正文候选生成和最终正文选择
+- `lib/articles/rendered-fallback.ts`
+  负责 Playwright 浏览器兜底
+- `lib/articles/content-scoring.ts`
+  负责正文候选评分
+
 ## 后续可继续扩展
 
 推荐优先级：

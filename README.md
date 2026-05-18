@@ -79,7 +79,7 @@ AI Notes 是一个面向学习与知识整理场景的全栈 AI 笔记应用。
   用于批量导出 AI 分析结果压缩包。
 
 - **Vitest + React Testing Library**
-  用于单元测试和同步组件测试，先为稳定模块建立自动化保护。
+  用于单元测试、API 集成测试和同步组件测试，先为稳定模块与核心路由建立自动化保护。
 
 ## 项目结构
 
@@ -193,6 +193,16 @@ npm run test:run
 ```
 
 执行一次性测试，适合提交前校验。
+
+当前已经覆盖：
+
+- 稳定 `lib/*` 模块测试
+- `AuthStage` 同步组件测试
+- 4 条核心 API 路由测试：
+  - `/api/ai/analyze`
+  - `/api/ai/ask-note`
+  - `/api/articles/import`
+  - `/api/admin/profiles/role`
 
 ### 6. 日常恢复项目时要不要启动数据库网页
 

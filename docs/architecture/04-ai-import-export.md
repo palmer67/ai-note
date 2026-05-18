@@ -9,6 +9,10 @@
 - `lib/openai/analyze-note.ts`
 - `lib/openai/ask-note.ts`
 - `lib/articles/import-from-url.ts`
+- `lib/articles/url-safety.ts`
+- `lib/articles/html-extraction.ts`
+- `lib/articles/rendered-fallback.ts`
+- `lib/articles/content-scoring.ts`
 - `lib/exports/ai-analysis.ts`
 - `lib/notes/search.ts`
 
@@ -37,11 +41,12 @@ flowchart TD
   ModelClient --> DeepSeek["DeepSeek / OpenAI Compatible API"]
 
   ImportApi --> Importer["importArticleFromUrl()"]
-  Importer --> SSRF["URL 安全校验"]
-  Importer --> StaticExtract["静态 HTML 提取"]
-  Importer --> BrowserFallback["Playwright 浏览器兜底"]
+  Importer --> UrlSafety["url-safety.ts"]
+  Importer --> StaticExtract["html-extraction.ts"]
+  Importer --> BrowserFallback["rendered-fallback.ts"]
+  StaticExtract --> Scoring["content-scoring.ts"]
   BrowserFallback --> RemoteSite["目标网页"]
-  StaticExtract --> RemoteSite
+  UrlSafety --> RemoteSite
 
   Exporter --> Files["Markdown / JSON / HTML / ZIP"]
 ```
@@ -64,6 +69,7 @@ flowchart TD
 - 先执行 URL 安全校验和重定向安全校验。
 - 先尝试静态提取，再在失败或挑战页场景下走浏览器兜底。
 - 浏览器兜底带有单进程并发锁和超时保护。
+- 当前导入实现已经拆成“安全校验 / 静态提取 / 浏览器兜底 / 候选评分”四层。
 
 ### 导出
 
@@ -74,13 +80,19 @@ flowchart TD
 
 - 优点：链路完整，安全约束已经比普通 Demo 更扎实。
 - 主要问题：
-  - `[import-from-url.ts](</C:/Users/cmd41/Documents/New project/lib/articles/import-from-url.ts:1>)` 超过 600 行，同时承担 SSRF 防护、HTML 清洗、正文评分、浏览器兜底和超时控制，职责过多。
   - AI 服务层还没有抽象出统一的“模型任务接口”，未来切模型或加多篇问答时会继续复制结构。
 
-## 推荐拆分方向
+## 已完成拆分
 
 1. `lib/articles/url-safety.ts`
-2. `lib/articles/static-extractors.ts`
+2. `lib/articles/html-extraction.ts`
 3. `lib/articles/rendered-fallback.ts`
 4. `lib/articles/content-scoring.ts`
-5. `lib/openai/tasks/*` 或 `lib/ai/tasks/*`，把分析、问答、多篇问答统一为任务接口
+
+`lib/articles/import-from-url.ts` 现在只保留总编排入口。
+
+## 后续可继续优化方向
+
+1. 继续为 `html-extraction.ts` 补单元测试
+2. 为 `url-safety.ts` 和 `content-scoring.ts` 补纯函数测试
+3. `lib/openai/tasks/*` 或 `lib/ai/tasks/*`，把分析、问答、多篇问答统一为任务接口

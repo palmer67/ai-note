@@ -203,6 +203,10 @@ npm run test:run
   - `/api/ai/ask-note`
   - `/api/articles/import`
   - `/api/admin/profiles/role`
+- 关键组件集成测试：
+  - `AuthForm`
+  - `NotesWorkspace`
+  - `AdminOverview`
 
 ### 6. 日常恢复项目时要不要启动数据库网页
 

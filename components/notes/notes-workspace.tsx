@@ -99,6 +99,8 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   const [importPending, startImport] = useTransition();
   const [batchExportPending, startBatchExport] = useTransition();
 
+  // selectedId / draft / notes 三者共同描述当前工作台上下文：
+  // 左侧选中哪篇、中间正在编辑什么、内存里当前持有哪些笔记。
   const selectedNote = selectedId ? notes.find((note) => note.id === selectedId) ?? null : null;
   const availableTags = Array.from(new Set(notes.flatMap((note) => parseTags(note.marker)))).sort((left, right) =>
     left.localeCompare(right, "zh-CN")
@@ -133,6 +135,8 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       return;
     }
 
+    // 批量导出只针对“当前可见且可导出”的结果集，
+    // 一旦筛选条件变化，就把已经失焦的选择项清掉。
     const visibleExportIds = new Set(
       getFilteredNotes(nextNotes, nextSearch, nextTag, nextLifecycleView)
         .filter((note) => canExportAiAnalysis(note))
@@ -187,6 +191,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     setAnalysisError(null);
 
     startLifecycleUpdate(async () => {
+      // 生命周期状态采用“即时落库”模式，不依赖主编辑区的保存按钮。
       const { data, error } = await supabase
         .from("notes")
         .update({
@@ -248,6 +253,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
 
         setNotes(nextNotes);
         pruneSelectedExports(nextNotes, search, activeTag, activeLifecycleView);
+        // 保存成功后重新回填 draft，保证标签标准化和数据库中的最终值保持一致。
         setDraft(toDraft(savedNote));
         setFeedback("笔记已保存。现有 AI 分析会保留；如果你想基于新内容更新分析，可以手动重新运行。");
         return;
@@ -308,6 +314,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
       const nextSelected = remaining[0] ?? null;
 
       setNotes(remaining);
+      // 临时资料集是基于 note id 挂载的，删除笔记时必须同步剔除。
       setSelectedCollectionIds((current) => current.filter((id) => id !== selectedId));
       pruneSelectedExports(remaining, search, activeTag, activeLifecycleView);
       setSelectedId(nextSelected?.id ?? null);
@@ -365,6 +372,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
 
     setAnalysisError(null);
     setFeedback(null);
+    // 先把当前笔记标记成 loading，让右侧面板立即进入反馈状态。
     setNotes((current) =>
       current.map((note) => (note.id === selectedId ? { ...note, ai_status: "loading" } : note))
     );
@@ -421,6 +429,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
   }
 
   function handleToggleCollection(noteId: string) {
+    // 临时资料集只存在页面内存里，因此用最轻量的 id 集合来维护。
     setSelectedCollectionIds((current) =>
       current.includes(noteId) ? current.filter((id) => id !== noteId) : [...current, noteId]
     );

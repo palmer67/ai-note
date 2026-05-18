@@ -4,6 +4,7 @@ const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-v4-flash";
 
 function getApiKey() {
+  // 兼容当前 DeepSeek 配置和未来可能切回 OpenAI 的场景。
   const apiKey = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -69,6 +70,7 @@ export async function runModelRequest<T>(request: () => Promise<T>) {
     } catch (error) {
       lastError = error;
 
+      // 这里只对常见瞬时错误做一次轻量重试，避免把所有失败都直接暴露给用户。
       if (!isRetryableModelError(error) || attempt === 1) {
         throw toReadableModelError(error);
       }

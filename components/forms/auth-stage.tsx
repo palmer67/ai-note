@@ -21,6 +21,7 @@ const contentByMode = {
 } as const;
 
 export function AuthStage({ mode, children }: AuthStageProps) {
+  // 左侧文案区纯做引导，不承载任何业务状态，方便认证表单独立复用。
   const content = contentByMode[mode];
 
   return (

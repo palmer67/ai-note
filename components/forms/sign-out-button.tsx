@@ -19,6 +19,7 @@ export function SignOutButton() {
       onClick={() => {
         startTransition(async () => {
           await supabase.auth.signOut();
+          // 退出来源带回登录页，用来区分普通工作台退出和管理员后台退出提示。
           const from = pathname?.startsWith("/dashboard/admin") ? "admin" : "dashboard";
 
           router.push(`/auth/signin?signed_out=1&from=${from}`);

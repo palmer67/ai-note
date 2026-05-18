@@ -78,6 +78,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
     }
 
     setExportFeedback(null);
+    // 选完格式就立即关闭菜单，避免用户连续点击时看到过期菜单状态。
     setExportMenuOpen(false);
 
     startExport(async () => {
@@ -98,6 +99,7 @@ export function AiAnalysisPanel({ note, isAnalyzing, error, onAnalyze }: AiAnaly
     }
 
     setAskError(null);
+    // 新问题开始时先清空旧答案，避免用户误以为当前答案仍然对应最新提问。
     setAnswer(null);
 
     startAsk(async () => {

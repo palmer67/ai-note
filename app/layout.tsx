@@ -14,6 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
+      {/* 全局样式和语言设置都在根布局收口，业务页面不再重复声明。 */}
       <body>{children}</body>
     </html>
   );

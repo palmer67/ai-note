@@ -24,6 +24,7 @@ const systemPrompt = `
 export async function askNote(input: AskNoteInput) {
   const client = createModelClient();
 
+  // 如果已有结构化摘要，就把它拼进上下文，减少模型重复消化长正文的成本。
   const summaryBlock = input.summary
     ? `
 已有 AI 摘要：

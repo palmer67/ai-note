@@ -43,6 +43,7 @@ export function NoteEditor({
   const isError = feedback ? /failed|required|invalid|失败|错误|无效/i.test(feedback) : false;
 
   function commitTag(rawTag: string) {
+    // 标签输入允许一次性粘贴多个值，所以统一走 parseTags 做拆分、清洗和去重。
     const nextTags = parseTags(rawTag);
 
     if (!nextTags.length) {
@@ -131,6 +132,7 @@ export function NoteEditor({
             id="note-tag-input"
             value={tagInput}
             onChange={(event) => setTagInput(event.target.value)}
+            // 失焦时也尝试提交，避免用户输入完标签却没按回车导致内容丢失。
             onBlur={() => commitTag(tagInput)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === "," || event.key === "，") {

@@ -3,6 +3,7 @@ export type AppRole = "admin" | "user";
 export type AiStatus = "idle" | "loading" | "done" | "error";
 export type NoteLifecycleStatus = "inbox" | "distilled" | "archived";
 
+// 这是模型落库后的结构化摘要，也是导出、问答和搜索复用的统一数据形态。
 export interface ArticleBreakdown {
   topic: string;
   coreArgument: string;
@@ -34,6 +35,7 @@ export interface Note {
   updated_at: string;
 }
 
+// NoteDraft 只描述编辑器里的临时输入，不等同于数据库里的完整 Note 记录。
 export interface NoteDraft {
   title: string;
   source_url: string;

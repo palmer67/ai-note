@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "缺少 note id。" }, { status: 400 });
   }
 
+  // 这里直接按 note id 读笔记，真正的数据访问边界由 Supabase RLS 保证。
   const { data: note, error: noteError } = await supabase
     .from("notes")
     .select("*")
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
       note: updatedNote as Note
     });
   } catch (error) {
+    // 一旦分析链路失败，统一把状态落成 error，避免页面长期停留在 loading。
     await supabase.from("notes").update({ ai_status: "error" }).eq("id", noteId);
 
     return NextResponse.json(

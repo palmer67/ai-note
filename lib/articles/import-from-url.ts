@@ -133,6 +133,8 @@ function htmlToStructuredText(html: string) {
 }
 
 function stripDangerousBlocks(html: string) {
+  // 保留 JSON-LD，移除会干扰正文提取的脚本和嵌入块，
+  // 避免后续选择器和文本归一化吃进大量噪声。
   return html
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<script\b(?![^>]*application\/ld\+json)[^>]*>[\s\S]*?<\/script>/gi, " ")
@@ -234,6 +236,8 @@ function trimAfterContentTail(blocks: string[]) {
   const trimmed: string[] = [];
 
   for (const block of blocks) {
+    // 很多站点会在正文后拼评论、下载引导、分享模块，
+    // 当前面已经积累了足够正文块时，遇到这些尾部标记就提前截断。
     if (trimmed.length >= 8 && STOP_PATTERNS.some((pattern) => block.includes(pattern))) {
       break;
     }
@@ -287,6 +291,7 @@ function scoreCandidateContent(content: string) {
   const blockCount = countMeaningfulBlocks(content);
   const headingCount = (content.match(/^## /gm) ?? []).length;
 
+  // 更偏向“有段落结构、像文章正文”的内容，而不是单纯字符最多的片段。
   return content.length + blockCount * 90 + headingCount * 60;
 }
 
@@ -367,6 +372,7 @@ function flattenJsonLdNodes(input: unknown): Record<string, unknown>[] {
   const node = input as Record<string, unknown>;
   const graph = node["@graph"];
 
+  // JSON-LD 既可能是单对象，也可能挂在 @graph 里，这里统一摊平成节点数组。
   return [node, ...flattenJsonLdNodes(graph)];
 }
 
@@ -408,6 +414,7 @@ function extractJsonLdArticleData(html: string): JsonLdArticleData {
           continue;
         }
 
+        // 同一个页面可能有多个 Article 节点，这里优先保留正文最长的那份。
         const articleBody = typeof node.articleBody === "string" ? normalizeBlockText(node.articleBody) : "";
         const title =
           typeof node.headline === "string"
@@ -513,6 +520,7 @@ async function fetchRenderedHtml(url: string) {
     throw new Error("增强导入正在处理其他链接，请稍后再试。");
   }
 
+  // 浏览器兜底成本高，而且本地环境里通常只需要串行执行一个导入任务。
   renderedImportActive = true;
 
   try {
@@ -538,6 +546,7 @@ async function fetchRenderedHtmlUnchecked(url: string) {
   let timedOut = false;
 
   try {
+    // Playwright 有时会卡在目标页的前端脚本里，这里用外层定时器兜底关浏览器。
     timeoutId = setTimeout(() => {
       timedOut = true;
       void browser.close();
@@ -564,6 +573,7 @@ async function fetchRenderedHtmlUnchecked(url: string) {
         () => {
           const text = document.body?.innerText ?? "";
 
+          // 至少等正文长度达到一个可分析阈值，再认为页面基本稳定。
           return text.length > 800 && !text.includes("Please wait");
         },
         { timeout: 12000 }
@@ -613,6 +623,7 @@ function extractArticleFromHtml(rawHtml: string, finalUrl: string): ImportedArti
     buildCandidate("fallback", fallbackContent, "fallback")
   ].filter((candidate): candidate is ExtractionCandidate => Boolean(candidate));
 
+  // 多策略并行产出候选内容，最后统一按分数选“最像正文”的那份。
   const bestCandidate = [...candidates].sort((left, right) => right.score - left.score)[0];
 
   if (!bestCandidate || bestCandidate.content.length < 80) {
@@ -654,6 +665,7 @@ async function assertSafeRemoteUrl(input: string) {
 
   const hostname = url.hostname.toLowerCase();
 
+  // 先挡显式本地地址，再做 DNS 解析，防止通过公网域名跳到私网地址。
   if (BLOCKED_HOSTNAMES.has(hostname) || hostname.endsWith(".local")) {
     throw new Error("出于安全原因，不允许抓取本地或内网地址。");
   }
@@ -705,6 +717,7 @@ async function fetchHtmlWithSafeRedirects(initialUrl: string) {
         throw new Error("重定向次数过多，已停止导入。");
       }
 
+      // 每一次跳转目标都重新做安全校验，避免 SSRF 通过重定向绕过首跳检查。
       currentUrl = await assertSafeRemoteUrl(new URL(location, currentUrl).toString());
       continue;
     }
@@ -735,12 +748,14 @@ export async function importArticleFromUrl(inputUrl: string): Promise<ImportedAr
 
   if (!looksLikeChallengePage(rawHtml)) {
     try {
+      // 优先走静态提取，只有明显不足时才进入浏览器兜底，降低导入成本。
       return extractArticleFromHtml(rawHtml, finalUrl);
     } catch {
       // Fall through to browser rendering when static extraction still comes up short.
     }
   }
 
+  // 动态页、挑战页或静态提取失败时，回退到浏览器渲染版本再抽正文。
   const rendered = await fetchRenderedHtml(finalUrl);
 
   return extractArticleFromHtml(rendered.html.slice(0, 2_000_000), rendered.finalUrl);

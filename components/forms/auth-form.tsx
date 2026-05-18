@@ -11,6 +11,7 @@ interface AuthFormProps {
 }
 
 function translateAuthMessage(message: string) {
+  // Supabase 返回的原始英文错误不适合直接展示给最终用户，这里做一层最小翻译。
   const normalized = message.toLowerCase();
 
   if (normalized.includes("invalid login credentials")) {
@@ -75,6 +76,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
+        // 登录成功后同时 push 和 refresh，确保服务端受保护页面立刻读到新会话。
         router.push("/dashboard");
         router.refresh();
         return;
@@ -91,6 +93,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       }
 
       if (data.session) {
+        // 如果项目未启用邮箱验证，Supabase 会直接返回 session，此时可以立即进工作台。
         router.push("/dashboard");
         router.refresh();
         return;

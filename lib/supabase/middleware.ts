@@ -19,6 +19,8 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          // 先更新 request 上的 cookie，再创建新的 response，
+          // 保证后续链路和返回给浏览器的结果保持一致。
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
           response = NextResponse.next({
@@ -33,6 +35,7 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // getUser() 会触发 Supabase 校验并在需要时刷新 auth cookie。
   await supabase.auth.getUser();
 
   return response;

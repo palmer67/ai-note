@@ -1,5 +1,6 @@
 begin;
 
+-- 角色切换必须在数据库内原子执行，避免并发请求把最后一个管理员同时降级。
 create or replace function public.update_profile_role_safely(
   actor_user_id uuid,
   target_profile_id uuid,
@@ -40,6 +41,7 @@ begin
   end if;
 
   if target_profile.role = 'admin' and next_role = 'user' then
+    -- 锁住所有管理员行后再计数，避免两个并发降级请求同时读到旧值。
     perform id
     from public.profiles
     where role = 'admin'

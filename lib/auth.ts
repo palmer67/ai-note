@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 
+// 资料表理论上会由数据库触发器自动补齐，这里再做一次服务端兜底，
+// 用来修复历史数据缺失或触发器未生效的场景。
 async function ensureProfile(
   supabase: Awaited<ReturnType<typeof createClient>>,
   user: { id: string; email?: string | null }
@@ -45,6 +47,7 @@ export async function requireSessionContext() {
     error: userError
   } = await supabase.auth.getUser();
 
+  // 受保护页面统一从这里拦截未登录状态，避免在页面层重复判断。
   if (userError || !user) {
     redirect("/auth/signin");
   }
@@ -61,6 +64,7 @@ export async function requireSessionContext() {
 export async function requireAdminContext() {
   const context = await requireSessionContext();
 
+  // 管理后台入口只接受管理员，普通用户直接回到个人工作台。
   if (context.profile.role !== "admin") {
     redirect("/dashboard");
   }

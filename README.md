@@ -97,10 +97,14 @@ components/
   forms/                      表单组件
   layout/                     页面框架
   notes/                      笔记列表、编辑器、AI 面板
+hooks/
+  use-notes-workspace-state   工作台本地状态 hook
+  use-note-mutations          工作台副作用 hook
 lib/
   articles/                   URL 导入与正文提取逻辑
   auth.ts                     登录上下文与管理员校验
   exports/                    AI 分析导出逻辑
+  notes/                      工作台搜索与纯计算 helper
   note-lifecycle.ts           生命周期状态配置
   openai/                     AI 调用逻辑（当前接 DeepSeek）
   supabase/                   Supabase 客户端与服务端封装

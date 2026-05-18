@@ -18,8 +18,9 @@ export function useNotesWorkspaceState(initialNotes: Note[]) {
   // 这个 hook 只负责页面内存状态，不直接发请求，
   // 这样筛选、选择和临时资料集逻辑可以单独收口。
   const [notes, setNotes] = useState(() => sortNotes(initialNotes));
-  const [selectedId, setSelectedId] = useState<string | null>(initialNotes[0]?.id ?? null);
-  const [draft, setDraft] = useState<NoteDraft>(() => toDraft(initialNotes[0] ?? null));
+  // 工作台首次进入时不默认选中任何笔记，避免页面一打开就强行进入某条记录详情。
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<NoteDraft>(() => blankDraft);
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [activeLifecycleView, setActiveLifecycleView] = useState<NoteLifecycleView>("all");

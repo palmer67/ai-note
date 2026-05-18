@@ -94,6 +94,15 @@ describe("NotesWorkspace", () => {
     expect(screen.getAllByRole("button", { name: "加入资料集" })).toHaveLength(1);
   });
 
+  it("does not auto-select a note on first load", () => {
+    render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
+
+    expect(screen.getByText("未选择")).toBeInTheDocument();
+    expect(screen.getByText("选择一篇文章开始工作")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "新建笔记" })).toBeInTheDocument();
+    expect(screen.getByText("请先保存一条笔记。")).toBeInTheDocument();
+  });
+
   it("filters notes by lifecycle view", () => {
     render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
 
@@ -164,5 +173,37 @@ describe("NotesWorkspace", () => {
     expect(await screen.findByText("这些文章都强调先做结构化整理。")).toBeInTheDocument();
     expect(screen.getByText("参考资料：")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it("clears collection qa state when the collection is cleared", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          answer: "这些文章都强调先做结构化整理。",
+          referencedTitles: ["AI 写作方法"]
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "加入资料集" })[0]);
+    fireEvent.change(screen.getByPlaceholderText("例如：这些文章共同强调了哪些方法？它们在哪些观点上互相补充？"), {
+      target: { value: "这些文章的共同点是什么？" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "开始资料集问答" }));
+
+    expect(await screen.findByText("这些文章都强调先做结构化整理。")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "清空" }));
+
+    expect(screen.queryByText("这些文章都强调先做结构化整理。")).not.toBeInTheDocument();
   });
 });

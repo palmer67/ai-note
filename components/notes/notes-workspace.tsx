@@ -142,6 +142,13 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
     });
   }
 
+  function handleClearCollectionWithQaReset() {
+    handleClearCollection();
+    setCollectionQuestion("");
+    setCollectionAnswer(null);
+    setCollectionError(null);
+  }
+
   return (
     <div className="stack notes-workspace">
       <section className="panel workspace-overview-panel">
@@ -242,7 +249,7 @@ export function NotesWorkspace({ currentProfile, initialNotes }: NotesWorkspaceP
             notes={collectionNotes}
             onSelect={selectNote}
             onRemove={handleRemoveFromCollection}
-            onClear={handleClearCollection}
+            onClear={handleClearCollectionWithQaReset}
             question={collectionQuestion}
             answer={collectionAnswer}
             error={collectionError}

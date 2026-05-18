@@ -13,6 +13,7 @@
   - `tsc --noEmit`
   - `vitest` 测试底座
   - 第一批稳定模块和同步组件测试
+  - 第二批核心 API 路由测试
   - 人工手测
 - 缺失：
   - API 集成测试
@@ -116,6 +117,8 @@ flowchart TD
 - `/api/ai/ask-note`
 - `/api/articles/import`
 - `/api/admin/profiles/role`
+
+当前阶段完成后，以上 4 条核心 API 路由应至少覆盖登录态、参数校验、资源不存在、成功路径和失败路径。
 
 ### 第 3 阶段：补组件集成测试
 

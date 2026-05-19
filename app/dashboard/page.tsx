@@ -1,5 +1,6 @@
 import { NotesWorkspace } from "@/components/notes/notes-workspace";
 import { requireSessionContext } from "@/lib/auth";
+import { isSavedCollectionsSchemaMissingError } from "@/lib/notes/saved-collections";
 import type { Note, NoteCollectionItem, SavedNoteCollection } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -21,7 +22,11 @@ export default async function DashboardPage() {
     .order("updated_at", { ascending: false });
 
   if (collectionError) {
-    throw new Error("加载保存资料集失败。");
+    if (isSavedCollectionsSchemaMissingError(collectionError)) {
+      console.warn("[dashboard] saved collections tables are missing; falling back to an empty collection list.");
+    } else {
+      throw new Error(`加载保存资料集失败：${collectionError.message}`);
+    }
   }
 
   const collectionRows = ((collectionData as Omit<SavedNoteCollection, "note_ids">[] | null) ?? []);
@@ -38,7 +43,11 @@ export default async function DashboardPage() {
       .order("position", { ascending: true });
 
     if (collectionItemError) {
-      throw new Error("加载资料集内容失败。");
+      if (isSavedCollectionsSchemaMissingError(collectionItemError)) {
+        console.warn("[dashboard] saved collection item table is missing; falling back to empty collection items.");
+      } else {
+        throw new Error(`加载资料集内容失败：${collectionItemError.message}`);
+      }
     }
 
     collectionItemRows = (collectionItemData as NoteCollectionItem[] | null) ?? [];

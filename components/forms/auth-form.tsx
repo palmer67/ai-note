@@ -10,6 +10,17 @@ interface AuthFormProps {
   mode: "signin" | "signup";
 }
 
+function looksLikeMaskedDuplicateSignup(data: {
+  session: unknown;
+  user?: {
+    identities?: Array<unknown> | null;
+  } | null;
+}) {
+  // Supabase 在开启邮箱确认时，重复注册可能不会直接返回 error，
+  // 而是返回一个不带 identities 的“掩码”用户对象来隐藏账户存在性。
+  return data.session === null && Array.isArray(data.user?.identities) && data.user.identities.length === 0;
+}
+
 function translateAuthMessage(message: string) {
   // Supabase 返回的原始英文错误不适合直接展示给最终用户，这里做一层最小翻译。
   const normalized = message.toLowerCase();
@@ -89,6 +100,11 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       if (error) {
         setFeedback(translateAuthMessage(error.message));
+        return;
+      }
+
+      if (looksLikeMaskedDuplicateSignup(data)) {
+        setFeedback("这个邮箱已经注册过了。请直接登录；如果忘了密码，再走重置密码。");
         return;
       }
 

@@ -156,11 +156,16 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 
 ### 3. 初始化 Supabase 数据库
 
-如果你是第一次启动项目，建议按下面顺序在 Supabase `SQL Editor` 里执行：
+如果你准备清空后重新初始化一个全新的 Supabase 项目，优先直接执行这一个整合脚本：
+
+- [ai-notes-fresh-bootstrap.sql](./supabase/setup/ai-notes-fresh-bootstrap.sql)
+
+如果你不是全新初始化，而是在旧库上按历史步骤增量补齐，再按下面顺序在 Supabase `SQL Editor` 里执行：
 
 - [20260508020000_bootstrap_repair.sql](./supabase/migrations/20260508020000_bootstrap_repair.sql)
 - [20260508030000_atomic_role_update.sql](./supabase/migrations/20260508030000_atomic_role_update.sql)
 - [20260511090000_add_note_lifecycle_status.sql](./supabase/migrations/20260511090000_add_note_lifecycle_status.sql)
+- [20260512100000_lock_profile_role_updates.sql](./supabase/migrations/20260512100000_lock_profile_role_updates.sql)
 - [20260519090000_add_saved_note_collections.sql](./supabase/migrations/20260519090000_add_saved_note_collections.sql)
 
 这些脚本会完成：

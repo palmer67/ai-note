@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { NotesWorkspace } from "@/components/notes/notes-workspace";
-import type { Note, Profile } from "@/lib/types";
+import type { Note, Profile, SavedNoteCollection } from "@/lib/types";
 
 const currentProfile: Profile = {
   id: "user-1",
@@ -54,25 +54,76 @@ const initialNotes: Note[] = [
   }
 ];
 
-function createSupabaseClientMock() {
-  return {
-    from: vi.fn(() => ({
-      update: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn()
-          }))
-        }))
-      })),
-      insert: vi.fn(() => ({
+const initialCollections: SavedNoteCollection[] = [
+  {
+    id: "collection-1",
+    user_id: "user-1",
+    name: "写作资料集",
+    description: "围绕 AI 写作方法的资料。",
+    note_ids: ["note-1"],
+    created_at: "2026-05-18T00:00:00.000Z",
+    updated_at: "2026-05-18T00:00:00.000Z"
+  }
+];
+
+function createSupabaseClientMock(options: {
+  collectionInsertResult?: {
+    data: Omit<SavedNoteCollection, "note_ids"> | null;
+    error: { message: string } | null;
+  };
+} = {}) {
+  const notesTable = {
+    update: vi.fn(() => ({
+      eq: vi.fn(() => ({
         select: vi.fn(() => ({
           single: vi.fn()
         }))
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn()
       }))
+    })),
+    insert: vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn()
+      }))
+    })),
+    delete: vi.fn(() => ({
+      eq: vi.fn()
     }))
+  };
+  const collectionInsertResult = options.collectionInsertResult ?? {
+    data: null,
+    error: null
+  };
+  const noteCollectionsTable = {
+    insert: vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn().mockResolvedValue(collectionInsertResult)
+      }))
+    })),
+    update: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn()
+        }))
+      }))
+    })),
+    delete: vi.fn(() => ({
+      eq: vi.fn().mockResolvedValue({ error: null })
+    }))
+  };
+
+  return {
+    from: vi.fn((table: string) => {
+      if (table === "note_collections") {
+        return noteCollectionsTable;
+      }
+
+      return notesTable;
+    }),
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    __mocks: {
+      notesTable,
+      noteCollectionsTable
+    }
   };
 }
 
@@ -115,7 +166,7 @@ describe("NotesWorkspace", () => {
   it("adds, removes, and clears notes from the temporary collection", () => {
     render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
 
-    const collectionSection = screen.getByRole("heading", { name: "临时资料集" }).closest("section");
+    const collectionSection = screen.getByRole("heading", { name: "资料集" }).closest("section");
 
     if (!collectionSection) {
       throw new Error("Missing collection section");
@@ -132,10 +183,64 @@ describe("NotesWorkspace", () => {
     expect(collectionSection).toHaveClass("is-empty");
 
     fireEvent.click(screen.getAllByRole("button", { name: "加入资料集" })[0]);
-    fireEvent.click(within(collectionSection).getByRole("button", { name: "清空" }));
+    fireEvent.click(within(collectionSection).getByRole("button", { name: "清空当前" }));
 
     expect(within(collectionSection).getByText("还没有加入资料。")).toBeInTheDocument();
     expect(collectionSection).toHaveClass("is-empty");
+  });
+
+  it("loads a saved collection into the current collection", () => {
+    render(
+      <NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} initialCollections={initialCollections} />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /写作资料集/ }));
+
+    const collectionSection = screen.getByRole("heading", { name: "资料集" }).closest("section");
+
+    if (!collectionSection) {
+      throw new Error("Missing collection section");
+    }
+
+    expect(within(collectionSection).getByText("已选 1 篇")).toBeInTheDocument();
+    expect(within(collectionSection).getByText("AI 写作方法")).toBeInTheDocument();
+    expect(within(collectionSection).getByText("正在编辑：写作资料集")).toBeInTheDocument();
+  });
+
+  it("saves the current selection as a persistent collection", async () => {
+    const collectionRow = {
+      id: "collection-2",
+      user_id: "user-1",
+      name: "新资料集",
+      description: "后续复盘用。",
+      created_at: "2026-05-19T00:00:00.000Z",
+      updated_at: "2026-05-19T00:00:00.000Z"
+    };
+    const supabaseMock = createSupabaseClientMock({
+      collectionInsertResult: {
+        data: collectionRow,
+        error: null
+      }
+    });
+
+    createClientMock.mockReturnValue(supabaseMock);
+    render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "加入资料集" })[0]);
+    fireEvent.change(screen.getByLabelText("资料集名称"), {
+      target: { value: "新资料集" }
+    });
+    fireEvent.change(screen.getByLabelText("说明"), {
+      target: { value: "后续复盘用。" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存为资料集" }));
+
+    expect(await screen.findByText("资料集已保存。")).toBeInTheDocument();
+    expect(supabaseMock.rpc).toHaveBeenCalledWith("replace_note_collection_items", {
+      target_collection_id: "collection-2",
+      target_note_ids: ["note-1"]
+    });
+    expect(screen.getByText("新资料集")).toBeInTheDocument();
   });
 
   it("switches into batch export mode and hides collection buttons", () => {
@@ -165,7 +270,7 @@ describe("NotesWorkspace", () => {
     );
 
     render(<NotesWorkspace currentProfile={currentProfile} initialNotes={initialNotes} />);
-    const collectionSection = screen.getByRole("heading", { name: "临时资料集" }).closest("section");
+    const collectionSection = screen.getByRole("heading", { name: "资料集" }).closest("section");
 
     if (!collectionSection) {
       throw new Error("Missing collection section");
@@ -210,7 +315,7 @@ describe("NotesWorkspace", () => {
 
     expect(await screen.findByText("这些文章都强调先做结构化整理。")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "清空" }));
+    fireEvent.click(screen.getByRole("button", { name: "清空当前" }));
 
     expect(screen.queryByText("这些文章都强调先做结构化整理。")).not.toBeInTheDocument();
   });

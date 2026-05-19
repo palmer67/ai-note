@@ -17,8 +17,8 @@
 
 ## 模块职责
 
-- 加载当前用户的全部笔记。
-- 在客户端管理当前选中文章、草稿、搜索、标签筛选、生命周期视图、资料集、批量导出状态。
+- 加载当前用户的全部笔记和已保存资料集。
+- 在客户端管理当前选中文章、草稿、搜索、标签筛选、生命周期视图、当前资料集、已保存资料集和批量导出状态。
 - 提供笔记的增删改、生命周期切换、URL 导入、AI 分析、单篇问答、批量导出等入口。
 
 ## 架构图
@@ -26,7 +26,9 @@
 ```mermaid
 flowchart LR
   DashboardPage["app/dashboard/page.tsx<br/>Server Component"] --> FetchNotes["Supabase select notes"]
+  DashboardPage --> FetchCollections["Supabase select note_collections<br/>+ note_collection_items"]
   FetchNotes --> Workspace["NotesWorkspace<br/>Client Component"]
+  FetchCollections --> Workspace
 
   Workspace --> StateHook["useNotesWorkspaceState"]
   Workspace --> MutationHook["useNoteMutations"]
@@ -37,17 +39,22 @@ flowchart LR
   Workspace --> Collection["NoteCollectionPanel"]
   Workspace --> AI["AiAnalysisPanel"]
 
-  List --> Filters["搜索 / 标签 / 生命周期 / 批量导出 / 临时资料集入口"]
+  List --> Filters["搜索 / 标签 / 生命周期 / 批量导出 / 当前资料集入口"]
   Editor --> Draft["标题 / 链接 / 标签 / 正文 / 生命周期"]
   Collection --> TempSet["selectedCollectionIds"]
+  Collection --> SavedSet["savedCollections / activeCollectionId"]
   AI --> QA["AI 分析 / 单篇问答 / 单篇导出"]
 
   Workspace --> BrowserSupabase["Supabase Browser Client"]
   Workspace --> ApiAnalyze["POST /api/ai/analyze"]
   Workspace --> ApiImport["POST /api/articles/import"]
+  Workspace --> ReplaceCollectionItems["RPC replace_note_collection_items"]
   AI --> ApiAsk["POST /api/ai/ask-note"]
 
   BrowserSupabase --> NotesTable["public.notes"]
+  BrowserSupabase --> CollectionsTable["public.note_collections"]
+  BrowserSupabase --> CollectionItemsTable["public.note_collection_items"]
+  ReplaceCollectionItems --> CollectionItemsTable
   ApiAnalyze --> NotesTable
   ApiImport --> Draft
   ApiAsk --> AI
@@ -65,23 +72,25 @@ flowchart LR
 - 数据状态：`notes`、`selectedId`、`draft`
 - 检索状态：`search`、`activeTag`、`activeLifecycleView`
 - 批量导出状态：`batchMode`、`selectedExportIds`、`batchFeedback`
-- 临时资料集状态：`selectedCollectionIds`
+- 当前资料集状态：`selectedCollectionIds`
+- 保存型资料集状态：`savedCollections`、`activeCollectionId`、`collectionName`、`collectionDescription`
 
 副作用状态主要包括：
 
 - 操作状态：`savePending`、`deletePending`、`analysisPending`、`importPending`
+- 资料集持久化状态：`collectionSavePending`、`collectionUpdatePending`、`collectionDeletePending`
 - 页面反馈状态：`feedback`、`analysisError`
 
 ## 当前实现评价
 
-- 优点：核心职责已经从一个超大组件中拆出，状态、远程副作用和纯计算边界更清楚。
-- 当前残留问题：`NotesWorkspace` 依然承担最终编排责任，后续如果继续加复杂交互，还可以再把 props 组装继续下沉。
+- 优点：核心职责已经从一个超大组件中拆出，当前资料集可以保存到数据库并继续载入复用。
+- 当前残留问题：`NotesWorkspace` 依然承担最终编排责任，后续如果继续加复杂交互，可以把资料集持久化动作再提取成独立 hook。
 
 ## 推荐拆分方向
 
 优先级从高到低：
 
-1. 提取 `useNotesWorkspaceState()`：集中管理筛选、选择、临时资料集和批量导出状态。
+1. 提取 `useNotesWorkspaceState()`：集中管理筛选、选择、当前资料集和批量导出状态。
 2. 提取 `useNoteMutations()`：集中管理保存、删除、状态切换、导入、分析这些副作用。
 3. 把纯计算逻辑下沉到 `lib/notes/*`，例如筛选、排序、统计和选择同步。
 

@@ -16,7 +16,7 @@ import type { Note, NoteDraft } from "@/lib/types";
 
 export function useNotesWorkspaceState(initialNotes: Note[]) {
   // 这个 hook 只负责页面内存状态，不直接发请求，
-  // 这样筛选、选择和临时资料集逻辑可以单独收口。
+  // 这样筛选、选择和当前资料集逻辑可以单独收口。
   const [notes, setNotes] = useState(() => sortNotes(initialNotes));
   // 工作台首次进入时不默认选中任何笔记，避免页面一打开就强行进入某条记录详情。
   const [selectedId, setSelectedId] = useState<string | null>(null);

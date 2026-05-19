@@ -36,6 +36,7 @@ interface UseNoteMutationsOptions {
   setFeedback: React.Dispatch<React.SetStateAction<string | null>>;
   setAnalysisError: React.Dispatch<React.SetStateAction<string | null>>;
   setBatchFeedback: React.Dispatch<React.SetStateAction<string | null>>;
+  onNoteDeleted?: (noteId: string) => void;
   pruneSelectedExports: (
     nextNotes: Note[],
     nextSearch: string,
@@ -64,6 +65,7 @@ export function useNoteMutations({
   setFeedback,
   setAnalysisError,
   setBatchFeedback,
+  onNoteDeleted,
   pruneSelectedExports
 }: UseNoteMutationsOptions) {
   // 这个 hook 统一收口“会改数据库或触发网络请求”的动作，
@@ -208,6 +210,7 @@ export function useNoteMutations({
       setNotes(remaining);
       // 删除后把选择上下文切到下一条，避免中间编辑区悬空。
       setSelectedCollectionIds((current) => current.filter((id) => id !== selectedId));
+      onNoteDeleted?.(selectedId);
       pruneSelectedExports(remaining, search, activeTag, activeLifecycleView);
       setSelectedId(nextSelected?.id ?? null);
       setDraft(toDraft(nextSelected));

@@ -1146,7 +1146,7 @@ button {
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 10px;
   align-self: start;
-  max-height: min(440px, 52vh);
+  max-height: min(620px, 68vh);
   background: linear-gradient(180deg, #fffaf3 0%, #f6ece0 100%);
   box-shadow: 0 10px 28px rgba(73, 51, 34, 0.08);
 }
@@ -1156,21 +1156,130 @@ button {
 }
 
 .collection-panel.is-empty {
-  max-height: 220px;
+  max-height: min(460px, 54vh);
+}
+
+.collection-panel.has-saved {
+  max-height: min(540px, 60vh);
 }
 
 .collection-panel.has-notes {
-  max-height: min(440px, 52vh);
+  max-height: min(620px, 68vh);
 }
 
 .collection-panel.has-answer {
-  max-height: min(520px, 58vh);
+  max-height: min(680px, 72vh);
 }
 
 .collection-stats {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.collection-save-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(73, 51, 34, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.72);
+}
+
+.compact-field {
+  gap: 6px;
+}
+
+.compact-field label {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.collection-save-form input,
+.collection-save-form textarea {
+  width: 100%;
+}
+
+.collection-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.collection-active-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.collection-feedback {
+  margin: 0;
+}
+
+.saved-collections-block {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.saved-collections-block h3 {
+  margin: 0;
+  font-size: 0.93rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.saved-collection-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-collection-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(73, 51, 34, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.78);
+}
+
+.saved-collection-row.active {
+  border-color: rgba(78, 116, 118, 0.22);
+  background: rgba(238, 247, 246, 0.86);
+}
+
+.saved-collection-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.saved-collection-title {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-collection-meta {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+.saved-collection-description {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .collection-list {

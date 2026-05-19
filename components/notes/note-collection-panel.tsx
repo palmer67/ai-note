@@ -1,13 +1,27 @@
 import { getNoteAiStatusLabel } from "@/lib/note-ai-status";
 import { getNoteLifecycleLabel } from "@/lib/note-lifecycle";
 import { parseTags } from "@/lib/tags";
-import type { CollectionAnswer, Note } from "@/lib/types";
+import type { CollectionAnswer, Note, SavedNoteCollection } from "@/lib/types";
 
 interface NoteCollectionPanelProps {
   notes: Note[];
+  savedCollections: SavedNoteCollection[];
+  activeCollectionId: string | null;
+  collectionName: string;
+  collectionDescription: string;
+  collectionFeedback: string | null;
+  isSavingCollection: boolean;
+  isUpdatingCollection: boolean;
+  isDeletingCollection: boolean;
   onSelect: (note: Note) => void;
   onRemove: (noteId: string) => void;
   onClear: () => void;
+  onCollectionNameChange: (value: string) => void;
+  onCollectionDescriptionChange: (value: string) => void;
+  onSaveCollection: () => void;
+  onUpdateCollection: () => void;
+  onLoadCollection: (collectionId: string) => void;
+  onDeleteCollection: (collectionId: string) => void;
   question: string;
   answer: CollectionAnswer | null;
   error: string | null;
@@ -18,9 +32,23 @@ interface NoteCollectionPanelProps {
 
 export function NoteCollectionPanel({
   notes,
+  savedCollections,
+  activeCollectionId,
+  collectionName,
+  collectionDescription,
+  collectionFeedback,
+  isSavingCollection,
+  isUpdatingCollection,
+  isDeletingCollection,
   onSelect,
   onRemove,
   onClear,
+  onCollectionNameChange,
+  onCollectionDescriptionChange,
+  onSaveCollection,
+  onUpdateCollection,
+  onLoadCollection,
+  onDeleteCollection,
   question,
   answer,
   error,
@@ -31,17 +59,21 @@ export function NoteCollectionPanel({
   // 资料集本身不要求所有笔记都完成分析，所以这里把已分析和待分析数量分开展示。
   const analyzedCount = notes.filter((note) => note.ai_summary).length;
   const pendingCount = notes.length - analyzedCount;
-  const collectionStateClass = notes.length ? (answer ? "has-answer" : "has-notes") : "is-empty";
+  const collectionStateClass = notes.length ? (answer ? "has-answer" : "has-notes") : savedCollections.length ? "has-saved" : "is-empty";
+  const activeCollection = activeCollectionId
+    ? savedCollections.find((collection) => collection.id === activeCollectionId) ?? null
+    : null;
+  const collectionFeedbackIsError = collectionFeedback ? /失败|错误|请先|不能为空|至少/i.test(collectionFeedback) : false;
 
   return (
     <section className={`panel collection-panel ${collectionStateClass}`}>
       <div className="panel-header">
         <div>
-          <h2 className="panel-title">临时资料集</h2>
-          <p className="panel-subtitle">从搜索结果里挑出几篇文章，先形成一组可复用的阅读材料。</p>
+          <h2 className="panel-title">资料集</h2>
+          <p className="panel-subtitle">把临时选择保存下来，之后可以一键载入继续阅读和提问。</p>
         </div>
         <button type="button" className="mini-button" disabled={!notes.length} onClick={onClear}>
-          清空
+          清空当前
         </button>
       </div>
 
@@ -52,6 +84,81 @@ export function NoteCollectionPanel({
       </div>
 
       <div className="collection-list">
+        <section className="collection-save-form">
+          <div className="field compact-field">
+            <label htmlFor="collection-name">资料集名称</label>
+            <input
+              id="collection-name"
+              value={collectionName}
+              onChange={(event) => onCollectionNameChange(event.target.value)}
+              placeholder="例如：AI 写作研究"
+            />
+          </div>
+          <div className="field compact-field">
+            <label htmlFor="collection-description">说明</label>
+            <textarea
+              id="collection-description"
+              value={collectionDescription}
+              onChange={(event) => onCollectionDescriptionChange(event.target.value)}
+              placeholder="可选：记录这个资料集的用途或问题方向"
+            />
+          </div>
+          <div className="collection-save-actions">
+            <button
+              type="button"
+              className="mini-button primary"
+              disabled={!notes.length || isSavingCollection}
+              onClick={onSaveCollection}
+            >
+              {isSavingCollection ? "保存中..." : "保存为资料集"}
+            </button>
+            <button
+              type="button"
+              className="mini-button"
+              disabled={!activeCollectionId || !notes.length || isUpdatingCollection}
+              onClick={onUpdateCollection}
+            >
+              {isUpdatingCollection ? "更新中..." : "更新当前"}
+            </button>
+          </div>
+          {activeCollection ? <p className="collection-active-note">正在编辑：{activeCollection.name}</p> : null}
+          {collectionFeedback ? (
+            <p className={`feedback collection-feedback${collectionFeedbackIsError ? " error" : ""}`}>{collectionFeedback}</p>
+          ) : null}
+        </section>
+
+        {savedCollections.length ? (
+          <section className="saved-collections-block">
+            <h3>已保存资料集</h3>
+            <div className="saved-collection-list">
+              {savedCollections.map((collection) => (
+                <article
+                  key={collection.id}
+                  className={`saved-collection-row${collection.id === activeCollectionId ? " active" : ""}`}
+                >
+                  <button type="button" className="saved-collection-main" onClick={() => onLoadCollection(collection.id)}>
+                    <span className="saved-collection-title">{collection.name}</span>
+                    <span className="saved-collection-meta">
+                      {collection.note_ids.length} 篇资料 · {new Date(collection.updated_at).toLocaleDateString("zh-CN")}
+                    </span>
+                    {collection.description ? (
+                      <span className="saved-collection-description">{collection.description}</span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    className="mini-button collection-remove"
+                    disabled={isDeletingCollection}
+                    onClick={() => onDeleteCollection(collection.id)}
+                  >
+                    删除
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {notes.length ? (
           <>
             {notes.map((note) => {

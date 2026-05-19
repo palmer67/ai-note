@@ -34,10 +34,13 @@ AI Notes 是一个面向学习与知识整理场景的全栈 AI 笔记应用。
   - `待整理`
   - `已提炼`
   - `已归档`
-- 从搜索结果中把多篇笔记加入临时资料集，方便后续集中阅读和继续扩展多篇问答
+- 首次进入工作台时默认不自动选中笔记，先显示更轻的工作台空状态
+- 从搜索结果中把多篇笔记加入资料集，方便后续集中阅读和继续扩展多篇问答
+- 可以把当前资料集保存为长期资料集，之后一键载入、更新或删除
+- 右侧资料集区域会根据内容状态动态伸缩，把更多空间留给 AI 面板
 - 对单篇笔记发起 AI 分析
 - 基于单篇笔记继续做 AI 问答
-- 基于当前临时资料集做多篇综合问答
+- 基于当前资料集做多篇综合问答
 - 保存笔记修改时保留已有 AI 分析结果
 - 一键复制 AI 分析结果
 - 本地导出 AI 分析内容：
@@ -158,16 +161,19 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 - [20260508020000_bootstrap_repair.sql](./supabase/migrations/20260508020000_bootstrap_repair.sql)
 - [20260508030000_atomic_role_update.sql](./supabase/migrations/20260508030000_atomic_role_update.sql)
 - [20260511090000_add_note_lifecycle_status.sql](./supabase/migrations/20260511090000_add_note_lifecycle_status.sql)
+- [20260519090000_add_saved_note_collections.sql](./supabase/migrations/20260519090000_add_saved_note_collections.sql)
 
 这些脚本会完成：
 
 - 创建 `profiles` 表
 - 创建 `notes` 表
+- 创建 `note_collections` 和 `note_collection_items` 表
 - 创建更新时间触发器
 - 创建新注册用户自动补齐 `profile` 的逻辑
 - 创建管理员判断与角色修改能力
 - 开启并配置 RLS
 - 增加笔记生命周期字段 `lifecycle_status`
+- 增加保存型资料集和原子替换资料集成员的 RPC
 
 如果改完表结构后页面仍提示 `schema cache` 相关错误，可以在 `SQL Editor` 里执行：
 
@@ -216,9 +222,12 @@ npm run test:run
   - `NotesWorkspace`
   - `AdminOverview`
 - 资料集问答：
-  - 支持基于当前临时资料集做多篇综合问答
+  - 支持基于当前资料集做多篇综合问答
   - 第一版最多支持 5 篇资料
   - 优先使用每篇笔记的 AI 摘要，必要时补正文片段
+- 保存型资料集：
+  - 支持保存、载入和更新当前资料集
+  - 删除资料集不会删除原始笔记
 
 ### 6. 日常恢复项目时要不要启动数据库网页
 
@@ -343,8 +352,9 @@ select * from public.notes order by updated_at desc;
 4. 继续问答
 5. 切换生命周期状态
 6. 按条件筛选和回看
-7. 把相关笔记加入临时资料集
-8. 导出有价值的 AI 结果
+7. 把相关笔记加入资料集
+8. 保存常用资料集，之后继续载入和更新
+9. 导出有价值的 AI 结果
 
 这也是它后面继续往“个人知识库”方向演进的基础。
 
@@ -367,8 +377,8 @@ select * from public.notes order by updated_at desc;
 
 1. 项目稳定性修复与依赖版本收口
 2. 更强的文章导入与清洗能力
-3. 基于临时资料集的 AI 问答
-4. 保存型资料集与知识主题管理
+3. 资料集问答上下文扩容与引用质量优化
+4. 知识主题管理
 5. 部署上线
 
 ## 学习价值
@@ -384,7 +394,7 @@ select * from public.notes order by updated_at desc;
 - 浏览器级抓取为什么能解决部分动态站点导入问题
 - 本地导出能力如何在前端完成闭环
 - 一个知识类产品如何逐步长出“工作流层”
-- 如何先用前端状态做临时资料集，再为后续多篇 AI 问答铺路
+- 如何从前端临时选择演进为受 RLS 保护的保存型资料集
 
 ## 注意事项
 

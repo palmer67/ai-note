@@ -40,6 +40,23 @@ export interface Note {
   updated_at: string;
 }
 
+export interface SavedNoteCollection {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  note_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteCollectionItem {
+  collection_id: string;
+  note_id: string;
+  position: number;
+  created_at: string;
+}
+
 // NoteDraft 只描述编辑器里的临时输入，不等同于数据库里的完整 Note 记录。
 export interface NoteDraft {
   title: string;

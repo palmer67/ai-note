@@ -85,7 +85,7 @@ describe("AuthForm", () => {
   it("shows signup success feedback when email confirmation is required", async () => {
     const supabase = createSupabaseAuthMock();
     supabase.auth.signUp.mockResolvedValue({
-      data: { session: null },
+      data: { session: null, user: { identities: [{ id: "identity-1" }] } },
       error: null
     });
     createClientMock.mockReturnValue(supabase);
@@ -98,6 +98,25 @@ describe("AuthForm", () => {
 
     expect(
       await screen.findByText("账号已创建。如果当前项目开启了邮箱验证，请先去邮箱完成验证后再登录。")
+    ).toBeInTheDocument();
+  });
+
+  it("shows duplicate signup feedback when supabase masks an existing account", async () => {
+    const supabase = createSupabaseAuthMock();
+    supabase.auth.signUp.mockResolvedValue({
+      data: { session: null, user: { identities: [] } },
+      error: null
+    });
+    createClientMock.mockReturnValue(supabase);
+
+    render(<AuthForm mode="signup" />);
+
+    fireEvent.change(screen.getByLabelText("邮箱"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "注册账号" }));
+
+    expect(
+      await screen.findByText("这个邮箱已经注册过了。请直接登录；如果忘了密码，再走重置密码。")
     ).toBeInTheDocument();
   });
 

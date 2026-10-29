@@ -29,11 +29,20 @@ export function useNotesWorkspaceState(initialNotes: Note[]) {
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
   const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
 
-  const selectedNote = selectedId ? notes.find((note) => note.id === selectedId) ?? null : null;
-  const availableTags = getAvailableTags(notes);
-  const analyzedCount = notes.filter((note) => note.ai_status === "done").length;
-  const filteredNotes = getFilteredNotes(notes, search, activeTag, activeLifecycleView);
-  const collectionNotes = getCollectionNotes(notes, selectedCollectionIds);
+  const selectedNote = useMemo(
+    () => (selectedId ? notes.find((note) => note.id === selectedId) ?? null : null),
+    [notes, selectedId]
+  );
+  const availableTags = useMemo(() => getAvailableTags(notes), [notes]);
+  const analyzedCount = useMemo(() => notes.filter((note) => note.ai_status === "done").length, [notes]);
+  const filteredNotes = useMemo(
+    () => getFilteredNotes(notes, search, activeTag, activeLifecycleView),
+    [activeLifecycleView, activeTag, notes, search]
+  );
+  const collectionNotes = useMemo(
+    () => getCollectionNotes(notes, selectedCollectionIds),
+    [notes, selectedCollectionIds]
+  );
   const lifecycleCounts = useMemo(
     () => ({
       all: notes.length,
@@ -43,9 +52,13 @@ export function useNotesWorkspaceState(initialNotes: Note[]) {
     }),
     [notes]
   );
-  const exportableFilteredNotes = filteredNotes.filter((note) => canExportAiAnalysis(note));
-  const visibleSelectedExportIds = selectedExportIds.filter((id) =>
-    exportableFilteredNotes.some((note) => note.id === id)
+  const exportableFilteredNotes = useMemo(
+    () => filteredNotes.filter((note) => canExportAiAnalysis(note)),
+    [filteredNotes]
+  );
+  const visibleSelectedExportIds = useMemo(
+    () => selectedExportIds.filter((id) => exportableFilteredNotes.some((note) => note.id === id)),
+    [exportableFilteredNotes, selectedExportIds]
   );
 
   function pruneSelectedExports(
